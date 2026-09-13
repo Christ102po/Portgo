@@ -11,6 +11,7 @@ const initialState = {
   // Local flow
   phone: "",
   isPhoneVerified: false,
+  phoneVerificationToken: null,
   fullName: "",
   gender: null,
   age: "",
@@ -78,6 +79,7 @@ function wizardReducer(state, action) {
       const next = { ...state, [action.field]: action.value };
       if (action.field === "phone" && action.value !== state.phone) {
         next.isPhoneVerified = false;
+        next.phoneVerificationToken = null;
       }
       if (action.field === "email" && action.value !== state.email) {
         next.isEmailVerified = false;

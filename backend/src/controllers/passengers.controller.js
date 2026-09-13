@@ -2,11 +2,11 @@ const prisma = require("../lib/prisma");
 const { generatePassNumber, generateQrDataUrl } = require("../lib/qrcode");
 const { getBookedCount, getClassBookedCount } = require("../lib/capacity");
 const { sendRegistrationEmail } = require("../lib/registrationEmail");
-const { sendRegistrationSms } = require("../lib/registrationSms");
 const { logAudit } = require("../lib/audit");
 const { startOfDay, addDays } = require("../lib/dateRange");
 const { getOrCreateSingleton: getAdvisorySingleton } = require("./advisory.controller");
 const { normalizePhone } = require("../lib/phoneMatch");
+const { verifyPhoneVerificationToken } = require("../lib/phoneVerificationToken");
 
 const MAX_PASS_NUMBER_ATTEMPTS = 3;
 const BOOKABLE_SCHEDULE_STATUSES = ["ACTIVE", "DELAYED"];
@@ -83,9 +83,23 @@ async function create(req, res) {
     ticketVerified,
     ticketPhotoUrl,
     accommodationClass,
+    phoneVerificationToken,
   } = req.body;
 
   const isForeignTourist = passengerType === "FOREIGN_TOURIST";
+
+  // Public local-passenger registrations must prove ownership of the exact
+  // phone number by completing the OTP step. Authenticated admin/ticketing
+  // workflows may register passengers on their behalf.
+  if (!isForeignTourist && !req.admin) {
+    const verification = verifyPhoneVerificationToken(phoneVerificationToken, contactNumber);
+    if (!verification.ok) {
+      return res.status(403).json({
+        code: "PHONE_VERIFICATION_REQUIRED",
+        message: verification.message,
+      });
+    }
+  }
 
   const advisory = await getAdvisorySingleton();
   if (advisory.suspended) {
@@ -283,13 +297,6 @@ async function create(req, res) {
   const notifications = {
     email: await sendRegistrationEmail({
       email: passenger.email,
-      fullName: passenger.fullName,
-      referenceCode: trip.passNumber,
-      ship,
-      schedule,
-    }),
-    sms: await sendRegistrationSms({
-      contactNumber: passenger.contactNumber,
       fullName: passenger.fullName,
       referenceCode: trip.passNumber,
       ship,
@@ -573,13 +580,6 @@ async function rebook(req, res) {
       ship,
       schedule,
     }),
-    sms: await sendRegistrationSms({
-      contactNumber: passenger.contactNumber,
-      fullName: passenger.fullName,
-      referenceCode: trip.passNumber,
-      ship,
-      schedule,
-    }),
   };
 
   res.status(201).json({
@@ -591,31 +591,6 @@ async function rebook(req, res) {
     passNumber: trip.passNumber,
     notifications,
   });
-}
-
-async function resendSms(req, res) {
-  const { id } = req.params;
-  const trip = await prisma.trip.findUnique({
-    where: { id },
-    include: { passenger: true, ship: true, schedule: true },
-  });
-  if (!trip) return res.status(404).json({ message: "Trip not found" });
-
-  const sms = await sendRegistrationSms({
-    contactNumber: trip.passenger.contactNumber,
-    fullName: trip.passenger.fullName,
-    referenceCode: trip.passNumber,
-    ship: trip.ship,
-    schedule: trip.schedule,
-  });
-
-  await logAudit(
-    req,
-    "REGISTRATION_SMS_RESENT",
-    `Resent registration SMS for ${trip.passenger.fullName} (${trip.passNumber}) — ${sms.sent ? "delivered" : `failed: ${sms.reason}`}`
-  );
-
-  res.json({ sms });
 }
 
 async function lookup(req, res) {
@@ -651,4 +626,4 @@ async function lookup(req, res) {
   });
 }
 
-module.exports = { create, search, rebook, lookup, resendSms };
+module.exports = { create, search, rebook, lookup };

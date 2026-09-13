@@ -15,6 +15,5 @@ router.post(
   validate(advisoryCancelAllSchema),
   asyncHandler(controller.cancelAllActiveSchedules)
 );
-router.post("/broadcast-sms", requireAuth, asyncHandler(controller.broadcastSms));
 
 module.exports = router;

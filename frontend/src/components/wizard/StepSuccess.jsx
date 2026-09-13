@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
-import { CheckCircle2, RotateCcw, Printer, Download, Mail, MessageSquare, CloudOff, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, RotateCcw, Printer, Download, Mail, CloudOff } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Button } from "../ui/Button";
 import { BoardingPassCard } from "./BoardingPassCard";
 import { downloadBoardingPass } from "../../lib/downloadPass";
-import { apiClient } from "../../lib/apiClient";
-import { cn } from "../../lib/cn";
 import { useToast } from "../ui/Toast";
 
 function NotificationRow({ icon: Icon, label, notification }) {
@@ -28,43 +26,10 @@ export function StepSuccess() {
   const { state, dispatch } = useWizard();
   const { result } = state;
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [smsStatus, setSmsStatus] = useState(null);
   const { showToast } = useToast();
-
-  useEffect(() => {
-    if (!result || result.offline) return;
-    setSmsStatus(result.notifications?.sms || null);
-    if (result.notifications?.sms?.sent) {
-      showToast({
-        title: "SMS Confirmation Sent!",
-        description: `Digital pass link texted to ${result.notifications.sms.to}.`,
-        variant: "success",
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
 
   if (!result) return null;
 
-  async function handleResendSms() {
-    setIsResending(true);
-    try {
-      const res = await apiClient.post(`/passengers/${result.trip.id}/resend-sms`);
-      setSmsStatus(res.data.sms);
-      showToast({
-        title: res.data.sms.sent ? "SMS Confirmation Resent!" : "Resend failed",
-        description: res.data.sms.sent
-          ? `Digital pass link texted to ${res.data.sms.to}.`
-          : res.data.sms.reason,
-        variant: res.data.sms.sent ? "success" : "error",
-      });
-    } catch {
-      showToast({ title: "Resend failed", description: "Please try again.", variant: "error" });
-    } finally {
-      setIsResending(false);
-    }
-  }
 
   async function handleDownload() {
     setIsDownloading(true);
@@ -151,20 +116,9 @@ export function StepSuccess() {
         />
       </div>
 
-      {(notifications?.email || smsStatus) && (
+      {notifications?.email && (
         <div className="mx-auto mt-4 max-w-md space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3 print:hidden">
-          <NotificationRow icon={Mail} label="Email confirmation" notification={notifications?.email} />
-          <NotificationRow icon={MessageSquare} label="SMS confirmation" notification={smsStatus} />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs"
-            onClick={handleResendSms}
-            disabled={isResending}
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isResending && "animate-spin")} />
-            {isResending ? "Resending..." : "Resend SMS Confirmation"}
-          </Button>
+          <NotificationRow icon={Mail} label="Email confirmation" notification={notifications.email} />
         </div>
       )}
 

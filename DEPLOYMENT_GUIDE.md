@@ -39,7 +39,7 @@ PORT_NAME=Surigao
 
 If your database service is not literally named `MySQL`, use its actual Railway service name in the reference.
 
-Optional integrations can then be added from `backend/.env.example`: TextBee, OpenWeather and SMTP.
+Optional integrations can then be added from `backend/.env.example`: OneSignal OTP, OpenWeather and SMTP.
 
 Do not manually set Railway's `PORT` unless you have a reason; the server reads Railway's provided port automatically.
 

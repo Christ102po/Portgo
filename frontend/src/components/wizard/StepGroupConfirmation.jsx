@@ -44,6 +44,7 @@ export function StepGroupConfirmation() {
   function buildPayload() {
     return {
       headContact: state.phone,
+      phoneVerificationToken: state.phoneVerificationToken || undefined,
       headEmail: state.email || undefined,
       gender: state.gender,
       address: state.address,
@@ -109,6 +110,19 @@ export function StepGroupConfirmation() {
             memberCount: payload.members.length,
           },
         });
+        return;
+      }
+      if (err.response?.status === 403 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
+        showToast({
+          title: "Verify your phone again",
+          description: err.response?.data?.message || "Your phone verification expired or no longer matches this number.",
+          variant: "error",
+        });
+        dispatch({
+          type: "SET_FIELDS",
+          fields: { isPhoneVerified: false, phoneVerificationToken: null },
+        });
+        dispatch({ type: "GOTO_STEP", step: 2 });
         return;
       }
       if (err.response?.status === 409) {

@@ -1,68 +1,96 @@
-# PORTGO Live SMS Verification Setup
+# PORTGO phone verification — OneSignal OTP only
 
-PORTGO phone verification now uses **real SMS delivery through TextBee**. The old on-screen demo OTP and the universal `123456` bypass have been removed.
+This PORTGO build uses **OneSignal only to deliver a one-time SMS verification code**. It does not use OneSignal for announcements, marketing, booking confirmations, or push notifications.
 
-## What you need
+The passenger flow is:
 
-1. A TextBee account.
-2. An Android phone with an active SIM that can send SMS.
-3. The TextBee Android gateway/device connected to your TextBee account and kept online.
-4. A TextBee API key.
+1. Passenger enters a Philippine mobile number.
+2. PORTGO generates a random 6-digit OTP on the backend.
+3. PORTGO sends that OTP through OneSignal's SMS API.
+4. The passenger enters the code received on the phone.
+5. PORTGO verifies the code and issues a short-lived signed phone-verification token.
+6. Registration is accepted only when that signed token matches the contact number being submitted.
 
-TextBee sends API requests from Railway to your registered Android phone, and that phone sends the SMS using its SIM. SMS recipients should be in E.164 form; PORTGO automatically converts Philippine `09XXXXXXXXX` numbers to `+639XXXXXXXXX`.
+This means simply changing `isPhoneVerified` in the browser is not enough to bypass verification.
 
-## Railway environment variables
+## 1. OneSignal account requirements
 
-Open **Railway -> PORTGO service -> Variables** and add:
+You need a OneSignal app with **SMS enabled/configured**. Creating a normal OneSignal app or enabling web push alone is not enough for SMS delivery.
+
+In the OneSignal dashboard, locate:
+
+- **App ID**
+- **App API Key** under Settings > Keys & IDs
+- your SMS sender configuration, if OneSignal requires a sender value for your account
+
+Do not put the API key in frontend code or commit it to GitHub.
+
+## 2. Railway variables
+
+Open Railway > PORTGO service > Variables and add:
 
 ```env
-TEXTBEE_API_KEY=your_real_textbee_api_key
+ONESIGNAL_APP_ID=your_onesignal_app_id
+ONESIGNAL_API_KEY=your_onesignal_app_api_key
+PHONE_VERIFICATION_TOKEN_TTL=30m
 ```
 
-If you want to force PORTGO to use one specific registered phone/device, also add:
+Only if your OneSignal SMS setup requires it, also add:
 
 ```env
-TEXTBEE_DEVICE_ID=your_textbee_device_id
+ONESIGNAL_SMS_FROM=your_configured_sms_sender
 ```
 
-`TEXTBEE_DEVICE_ID` is optional. When it is omitted, TextBee uses the default or most recently active enabled device.
+Keep your existing `JWT_SECRET`; PORTGO uses it to sign the proof that a phone number was successfully verified.
 
-Never put your real API key in GitHub or in `backend/.env.example`.
+After saving Railway variables, let Railway redeploy the service.
 
-## Deploy
+## 3. What PORTGO sends
 
-After adding the variables, deploy/redeploy PORTGO on Railway. Then test with a real Philippine mobile number such as `09XX-XXX-XXXX`.
+The SMS is intentionally limited to phone verification, for example:
 
-Expected flow:
+```text
+Your PORTGO verification code is 482913. It expires in 5 minutes. Do not share this code.
+```
 
-1. Passenger enters a valid PH mobile number.
-2. Passenger taps **Send Code**.
-3. PORTGO generates a random 6-digit OTP valid for 5 minutes.
-4. Railway calls TextBee.
-5. Your registered Android phone sends the actual SMS.
-6. Passenger enters the received code.
-7. Verification succeeds only when the code matches.
+No OTP is returned to the browser or shown as a demo code.
 
-## Security behavior
+## 4. Security behavior
 
-- No OTP is returned to the browser/API response.
-- The old `123456` bypass is removed.
-- A resend is limited to once every 60 seconds server-side.
-- OTPs expire after 5 minutes.
-- After 5 incorrect attempts, the OTP is invalidated and a new one must be requested.
-- If SMS delivery fails, the OTP is deleted and verification cannot continue with a hidden/demo code.
+- 6-digit cryptographically random code
+- 5-minute OTP expiry
+- 60-second resend cooldown
+- maximum 5 incorrect attempts
+- successful codes are invalidated immediately
+- failed SMS sends delete the pending OTP
+- registration receives a signed verification token only after a correct OTP
+- the backend checks that the token belongs to the exact contact number being registered
+- changing the phone field in the wizard clears the previous verification proof
 
-## If SMS does not arrive
+## 5. Testing
 
-Check:
+After Railway deploys, use a real Philippine mobile number such as:
 
-- `TEXTBEE_API_KEY` exists in Railway and is correct.
-- The Android gateway phone is powered on and connected to the internet.
-- TextBee has SMS permission on the Android phone.
-- The SIM can send a normal SMS and has signal/load/plan as needed.
-- The TextBee device is enabled/online in the dashboard.
-- Railway deployment logs for `[OTP][SMS FAILED]` messages.
+```text
+0917-123-4567
+```
 
-The current TextBee account-level endpoint used by PORTGO is:
+PORTGO normalizes it to E.164 format:
 
-`POST https://api.textbee.dev/api/v1/gateway/send-sms`
+```text
++639171234567
+```
+
+Tap **Send OTP**, receive the SMS, enter the 6-digit code, then continue registration.
+
+If delivery fails, open Railway > Deployments > latest deployment > Logs and look for:
+
+```text
+[OTP][ONESIGNAL FAILED]
+```
+
+The line after it contains the OneSignal HTTP error/status but never prints your API key.
+
+## 6. Important limitation
+
+OneSignal must have SMS sending enabled for the app/account. OneSignal web-push credentials alone cannot send an SMS. Real carrier SMS delivery can also require sender setup and paid SMS access depending on the OneSignal account.

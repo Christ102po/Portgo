@@ -80,6 +80,7 @@ export function StepConfirmation() {
           }
         : {
             contactNumber: state.phone,
+            phoneVerificationToken: state.phoneVerificationToken || undefined,
             gender: state.gender,
             age: state.age ? Number(state.age) : undefined,
             address: state.address,
@@ -122,6 +123,19 @@ export function StepConfirmation() {
           type: "SET_RESULT",
           result: { offline: true, localId: record.localId, passenger: payload, ship: null, schedule: null },
         });
+        return;
+      }
+      if (err.response?.status === 403 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
+        showToast({
+          title: "Verify your phone again",
+          description: err.response?.data?.message || "Your phone verification expired or no longer matches this number.",
+          variant: "error",
+        });
+        dispatch({
+          type: "SET_FIELDS",
+          fields: { isPhoneVerified: false, phoneVerificationToken: null },
+        });
+        dispatch({ type: "GOTO_STEP", step: 2 });
         return;
       }
       if (err.response?.status === 409 && err.response?.data?.code === "DUPLICATE_REGISTRATION") {

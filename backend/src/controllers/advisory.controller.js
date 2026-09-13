@@ -1,10 +1,5 @@
 const prisma = require("../lib/prisma");
 const { logAudit } = require("../lib/audit");
-const { sendSms } = require("../lib/textbee");
-
-const DEFAULT_GALE_WARNING_SMS =
-  "PORTGO ALERT: Philippine Coast Guard Gale Warning is now in effect. Trips may be delayed or suspended — please check with the port before heading out.";
-
 async function getOrCreateSingleton() {
   const existing = await prisma.portAdvisory.findFirst({ orderBy: { updatedAt: "desc" } });
   if (existing) return existing;
@@ -90,38 +85,4 @@ async function cancelAllActiveSchedules(req, res) {
   res.json({ schedulesCancelled: schedules.length, tripsCancelled });
 }
 
-async function broadcastSms(req, res) {
-  const { message } = req.body;
-  const smsMessage = (message || DEFAULT_GALE_WARNING_SMS).slice(0, 300);
-
-  const trips = await prisma.trip.findMany({
-    where: { status: "ACTIVE", passenger: { contactNumber: { not: null } } },
-    include: { passenger: true },
-  });
-
-  const recipients = new Map();
-  for (const t of trips) {
-    const phone = t.passenger.contactNumber;
-    if (phone && !recipients.has(phone)) recipients.set(phone, t.passenger.fullName);
-  }
-
-  let sent = 0;
-  let failed = 0;
-  for (const phone of recipients.keys()) {
-    const result = await sendSms(phone, smsMessage);
-    if (result.ok) sent += 1;
-    else failed += 1;
-  }
-
-  await logAudit(
-    req,
-    "ADVISORY_SMS_BROADCAST",
-    `Sent Gale Warning SMS alert to ${sent} of ${recipients.size} passenger(s) with active bookings${
-      failed ? ` — ${failed} failed` : ""
-    }`
-  );
-
-  res.json({ total: recipients.size, sent, failed });
-}
-
-module.exports = { getAdvisory, updateAdvisory, cancelAllActiveSchedules, broadcastSms, getOrCreateSingleton };
+module.exports = { getAdvisory, updateAdvisory, cancelAllActiveSchedules, getOrCreateSingleton };

@@ -1,5 +1,17 @@
 const { sendMail } = require("./mailer");
-const { buildReprintLink } = require("./registrationSms");
+function getFrontendBaseUrl() {
+  if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, "");
+  const origins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const preferred = origins.find((o) => !/localhost|127\.0\.0\.1/.test(o)) || origins[0];
+  return preferred.replace(/\/$/, "");
+}
+
+function buildReprintLink(referenceCode) {
+  return `${getFrontendBaseUrl()}/?ref=${encodeURIComponent(referenceCode)}`;
+}
 
 function routeLabel(route) {
   return route === "SURIGAO_TO_DAPA" ? "Surigao → Dapa" : "Dapa → Surigao";

@@ -1,11 +1,7 @@
 const otpStore = require("../lib/otpStore");
-const { sendSms } = require("../lib/textbee");
+const { sendSms, normalizePhoneToE164 } = require("../lib/textbee");
 const { sendMail } = require("../lib/mailer");
 const { logAudit } = require("../lib/audit");
-
-// Shared bypass code accepted on top of a real delivered code — useful for
-// demos/testing when live SMS/email delivery isn't available or desired.
-const DEMO_BYPASS_CODE = "123456";
 
 async function send(req, res) {
   const { phone, channel = "sms" } = req.body;
@@ -13,12 +9,20 @@ async function send(req, res) {
     return res.status(400).json({ message: "A valid phone number or email address is required" });
   }
 
-  const code = otpStore.setCode(phone);
+  const otp = otpStore.setCode(phone);
+  if (!otp.ok) {
+    return res.status(429).json({
+      message: `Please wait ${otp.retryAfterSeconds} seconds before requesting another code.`,
+      retryAfterSeconds: otp.retryAfterSeconds,
+    });
+  }
+
+  const code = otp.code;
 
   if (channel === "email") {
     const emailResult = await sendMail({
-      to: phone, // for the email channel this field carries the address
-      subject: `Your PORTGO verification code: ${code}`,
+      to: phone,
+      subject: "Your PORTGO verification code",
       text:
         `Your PORTGO verification code is: ${code}\n\n` +
         `This code expires in ${Math.round(otpStore.OTP_TTL_MS / 60000)} minutes. ` +
@@ -31,70 +35,58 @@ async function send(req, res) {
         `Expires in ${Math.round(otpStore.OTP_TTL_MS / 60000)} minutes. Do not share this code.</p>`,
     });
 
-    if (emailResult.ok) {
-      console.log(`[OTP] Email sent to ${phone} (${emailResult.messageId})`);
-      await logAudit(req, "OTP_SENT", `Verification code sent via email to ${phone}`);
-      // Real delivery succeeded — do NOT return devCode, so the on-screen
-      // "Demo Verification Code" banner stays hidden. The passenger must use
-      // the code from their inbox.
-      return res.json({
-        success: true,
+    if (!emailResult.ok) {
+      otpStore.clearCode(phone);
+      console.error(`[OTP][EMAIL FAILED] ${phone}: ${emailResult.error}`);
+      await logAudit(req, "OTP_SEND_FAILED", `Email delivery failed for ${phone} — ${emailResult.error}`);
+      return res.status(502).json({
+        success: false,
         channel: "email",
-        emailSent: true,
-        expiresInSeconds: otpStore.OTP_TTL_MS / 1000,
-        message: "Verification code sent to your email",
+        message: "We couldn't send the verification email. Please try again or use SMS.",
       });
     }
 
-    // No SMTP configured (or send failed) — keep the code valid and hand it
-    // back so the on-screen Demo Verification Code banner still works.
-    console.error(`[OTP][EMAIL ${emailResult.simulated ? "SIMULATED" : "FAILED"}] ${phone}: ${emailResult.error}`);
-    await logAudit(
-      req,
-      emailResult.simulated ? "OTP_SENT" : "OTP_SEND_FAILED",
-      `Email code for ${phone} — ${emailResult.error}`
-    );
+    console.log(`[OTP] Email sent to ${phone} (${emailResult.messageId})`);
+    await logAudit(req, "OTP_SENT", `Verification code sent via email to ${phone}`);
     return res.json({
       success: true,
       channel: "email",
-      emailSent: false,
-      devCode: code,
+      emailSent: true,
       expiresInSeconds: otpStore.OTP_TTL_MS / 1000,
-      message: emailResult.simulated
-        ? "No live email provider configured — use the Demo Verification Code shown below."
-        : "We couldn't send the email — use the Demo Verification Code shown below instead.",
+      message: "Verification code sent to your email",
     });
   }
 
-  const message = `Your PORTGO Verification Code is: ${code}. Do not share this code.`;
+  const message = `PORTGO verification code: ${code}. It expires in ${Math.round(
+    otpStore.OTP_TTL_MS / 60000
+  )} minutes. Do not share this code.`;
+
   const smsResult = await sendSms(phone, message);
 
-  if (smsResult.ok) {
-    console.log(`[OTP] SMS sent to ${phone} via Textbee`);
-    await logAudit(req, "OTP_SENT", `Verification code sent via SMS to ${phone}`);
-    return res.json({
-      success: true,
+  if (!smsResult.ok) {
+    // Never expose an OTP when live delivery fails. Remove it so there is no
+    // hidden valid code that a passenger could guess or obtain from a response.
+    otpStore.clearCode(phone);
+    console.error(`[OTP][SMS FAILED] ${phone}: ${smsResult.error}`);
+    await logAudit(req, "OTP_SEND_FAILED", `SMS delivery failed for ${phone} — ${smsResult.error}`);
+    return res.status(502).json({
+      success: false,
       channel: "sms",
-      smsSent: true,
-      devCode: code,
-      expiresInSeconds: otpStore.OTP_TTL_MS / 1000,
-      message: "Verification code sent via SMS",
+      smsSent: false,
+      message: "We couldn't send the SMS. Please check the number and SMS service configuration, then try again.",
     });
   }
 
-  // Real SMS delivery failed (or Textbee isn't configured) — keep the code
-  // valid in the store and hand it back to the client so the on-screen
-  // Demo Verification Code banner still lets the passenger complete
-  // verification without a working SMS gateway.
-  console.error(`[OTP][SMS FAILED] ${phone}: ${smsResult.error}`);
-  await logAudit(req, "OTP_SEND_FAILED", `SMS delivery failed for ${phone} — ${smsResult.error}`);
-  res.json({
+  const normalizedPhone = normalizePhoneToE164(phone);
+  console.log(`[OTP] SMS accepted for ${normalizedPhone} via TextBee${smsResult.smsBatchId ? ` (${smsResult.smsBatchId})` : ""}`);
+  await logAudit(req, "OTP_SENT", `Verification code sent via SMS to ${normalizedPhone}`);
+
+  return res.json({
     success: true,
     channel: "sms",
-    smsSent: false,
-    devCode: code,
+    smsSent: true,
     expiresInSeconds: otpStore.OTP_TTL_MS / 1000,
-    message: "We couldn't send the SMS to that number — use the Demo Verification Code shown below instead.",
+    message: "Verification code sent via SMS",
   });
 }
 
@@ -104,11 +96,6 @@ async function verify(req, res) {
     return res.status(400).json({ verified: false, message: "Phone/email and code are required" });
   }
 
-  if (code === DEMO_BYPASS_CODE) {
-    await logAudit(req, "OTP_VERIFIED", `${phone} verified using shared Demo Code`);
-    return res.json({ verified: true });
-  }
-
   const result = otpStore.verifyCode(phone, code);
   if (!result.ok) {
     await logAudit(req, "OTP_VERIFY_FAILED", `Failed OTP verification attempt for ${phone} — ${result.message}`);
@@ -116,7 +103,7 @@ async function verify(req, res) {
   }
 
   await logAudit(req, "OTP_VERIFIED", `${phone} successfully verified`);
-  res.json({ verified: true });
+  return res.json({ verified: true });
 }
 
 module.exports = { send, verify };

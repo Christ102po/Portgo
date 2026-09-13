@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, Mail, MessageSquareText, Info } from "lucide-react";
+import { ShieldCheck, Mail, MessageSquareText } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/Dialog";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
@@ -9,7 +9,7 @@ import { cn } from "../../lib/cn";
 
 const INVALID_CODE_MESSAGE = "Invalid verification code. Please check your code and try again.";
 
-export function OtpModal({ open, onOpenChange, phone, defaultEmail, demoCode = "", onVerified, cooldown = 0, onResend }) {
+export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, cooldown = 0, onResend }) {
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
@@ -18,9 +18,7 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, demoCode = "
   const [emailInput, setEmailInput] = useState(defaultEmail || "");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [emailDemoCode, setEmailDemoCode] = useState("");
   const { showToast } = useToast();
-  const activeDemoCode = channel === "email" ? emailDemoCode : demoCode;
 
   useEffect(() => {
     if (open) {
@@ -29,7 +27,6 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, demoCode = "
       setChannel("sms");
       setIdentifier(phone);
       setEmailSent(false);
-      setEmailDemoCode("");
     }
   }, [open, phone]);
 
@@ -64,7 +61,6 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, demoCode = "
       const res = await apiClient.post("/otp/send", { phone: emailInput.trim(), channel: "email" });
       setIdentifier(emailInput.trim());
       setEmailSent(true);
-      setEmailDemoCode(res.data.devCode || "");
       setCode("");
       setError("");
       showToast({
@@ -146,15 +142,6 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, demoCode = "
             >
               {isSendingEmail ? "Sending..." : "Send Code"}
             </Button>
-          </div>
-        )}
-
-        {activeDemoCode && (
-          <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              Demo Verification Code: <span className="font-mono font-semibold">{activeDemoCode}</span>
-            </span>
           </div>
         )}
 

@@ -16,7 +16,7 @@ const otpSendSchema = z.object({
 
 const otpVerifySchema = z.object({
   phone: z.string().min(4),
-  code: z.string().min(4),
+  code: z.string().regex(/^\d{6}$/, "Verification code must be exactly 6 digits"),
 });
 
 const PASSENGER_TYPE_VALUES = ["LOCAL_RESIDENT", "LOCAL_TOURIST", "FOREIGN_TOURIST"];

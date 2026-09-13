@@ -16,7 +16,6 @@ export function StepPhoneVerification() {
   const [isSending, setIsSending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [demoCode, setDemoCode] = useState("");
   const { showToast } = useToast();
   const digits = phoneDigits(state.phone);
   const hasBasicFormat = hasPhMobileFormat(digits);
@@ -34,7 +33,6 @@ export function StepPhoneVerification() {
     setIsSending(true);
     try {
       const res = await apiClient.post("/otp/send", { phone: state.phone });
-      setDemoCode(res.data.devCode || "");
       setModalOpen(true);
       setCooldown(60);
       showToast({
@@ -137,7 +135,6 @@ export function StepPhoneVerification() {
         onOpenChange={setModalOpen}
         phone={state.phone}
         defaultEmail={state.email}
-        demoCode={demoCode}
         cooldown={cooldown}
         onResend={handleSendCode}
         onVerified={({ channel, identifier } = {}) => {

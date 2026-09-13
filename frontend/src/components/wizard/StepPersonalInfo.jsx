@@ -262,7 +262,7 @@ export function StepPersonalInfo() {
       </p>
 
       <Card className="mx-auto max-w-5xl border-slate-200/80 shadow-sm">
-        <CardContent className="grid grid-cols-1 gap-x-10 gap-y-5 p-6 lg:grid-cols-2 lg:divide-x lg:divide-slate-100">
+        <CardContent className="grid grid-cols-1 gap-x-10 gap-y-5 p-4 sm:p-6 lg:grid-cols-2 lg:divide-x lg:divide-slate-100">
           {/* Left column: Primary Details */}
           <div className="space-y-4">
             <SectionLabel>Primary Details</SectionLabel>
@@ -283,7 +283,7 @@ export function StepPersonalInfo() {
 
             {!isTourist && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <Label>Gender</Label>
                     <Select
@@ -325,7 +325,7 @@ export function StepPersonalInfo() {
             )}
 
             {isTourist && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="nationality">Nationality</Label>
                   <Input
@@ -402,7 +402,7 @@ export function StepPersonalInfo() {
             </div>
 
             {!isTourist && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="emergencyName">Emergency Contact</Label>
                   <Input

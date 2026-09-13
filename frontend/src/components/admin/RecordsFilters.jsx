@@ -173,13 +173,13 @@ export function RecordsFilters({ filters, onChange, ships }) {
           value={filters.status || "ALL"}
           onValueChange={(v) => set("status", v === "ALL" ? "" : v)}
           options={STATUS_OPTIONS}
-          className="h-10 w-44 focus:border-emerald-400 focus:ring-emerald-500/20"
+          className="h-10 w-full sm:w-44 focus:border-emerald-400 focus:ring-emerald-500/20"
         />
         <Select
           value={filters.priority || "ALL"}
           onValueChange={(v) => set("priority", v === "ALL" ? "" : v)}
           options={PRIORITY_OPTIONS}
-          className="h-10 w-48 focus:border-emerald-400 focus:ring-emerald-500/20"
+          className="h-10 w-full sm:w-48 focus:border-emerald-400 focus:ring-emerald-500/20"
         />
         <button
           type="button"

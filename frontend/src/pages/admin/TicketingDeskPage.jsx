@@ -442,7 +442,7 @@ export default function TicketingDeskPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
                 { value: "INDIVIDUAL", label: "Individual", icon: UserRound },
                 { value: "FAMILY", label: "Family / Group", icon: Users },
@@ -470,7 +470,7 @@ export default function TicketingDeskPage() {
               })}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Passenger Type</Label>
                 <Select
@@ -518,7 +518,7 @@ export default function TicketingDeskPage() {
                 className={isLowConfidence("fullName") ? LOW_CONFIDENCE_FIELD_CLASS : undefined}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Contact Number</Label>
                 <Input
@@ -539,7 +539,7 @@ export default function TicketingDeskPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Age</Label>
                 <Input
@@ -651,7 +651,7 @@ export default function TicketingDeskPage() {
             <CardTitle>Trip Selection</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Ship</Label>
                 <Select
@@ -728,7 +728,7 @@ export default function TicketingDeskPage() {
                   <Switch checked={form.hasVehicle} onCheckedChange={(checked) => set("hasVehicle", checked)} />
                 </div>
                 {form.hasVehicle && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <Label>Vehicle Type</Label>
                       <Select value={form.vehicleType} onValueChange={(v) => set("vehicleType", v)} options={VEHICLE_TYPE_OPTIONS} placeholder="Select" />

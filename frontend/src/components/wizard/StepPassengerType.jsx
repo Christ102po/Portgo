@@ -130,7 +130,7 @@ export function StepPassengerType() {
           <p className="mb-3 text-center text-sm font-semibold text-slate-700">
             Are you a Philippine Tourist (Domestic) or a Foreign Tourist?
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
             {TOURIST_SUB_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const selected = state.passengerType === opt.value;

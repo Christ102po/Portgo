@@ -50,7 +50,7 @@ export function WatchlistFormDialog({ open, onOpenChange, entry, onSubmit }) {
             <Label htmlFor="wlFullName">Full Name</Label>
             <Input id="wlFullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="wlPassport">Passport Number (Optional)</Label>
               <Input id="wlPassport" value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} />

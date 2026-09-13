@@ -173,7 +173,7 @@ export default function GatePassScannerPage() {
       scanner
         .start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 280 } },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
           (decodedText) => handleCameraDecode(extractCode(decodedText)),
           () => {}
         )
@@ -209,7 +209,7 @@ export default function GatePassScannerPage() {
   const trip = result?.trip;
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#0A0F0B] text-white">
+    <div className="flex min-h-[100dvh] w-full flex-col bg-[#0A0F0B] text-white">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-8">
         <div className="flex items-center gap-2.5">
           <ScanLine className="h-6 w-6 shrink-0 text-mint" />
@@ -313,7 +313,7 @@ export default function GatePassScannerPage() {
               {result.message && <p className="mt-2 text-base font-medium text-white/90">{result.message}</p>}
 
               {trip && (
-                <div className="mt-6 flex items-center gap-4 rounded-2xl bg-black/25 p-4 text-left">
+                <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl bg-black/25 p-4 text-center sm:flex-row sm:text-left">
                   {trip.passenger.selfiePhotoUrl ? (
                     <img
                       src={trip.passenger.selfiePhotoUrl}
@@ -354,7 +354,7 @@ export default function GatePassScannerPage() {
 
               <Button
                 size="lg"
-                className="mt-8 rounded-xl bg-white px-8 text-graphite hover:bg-white/90 focus-visible:ring-white"
+                className="mt-8 w-full rounded-xl bg-white px-6 text-graphite sm:w-auto sm:px-8 hover:bg-white/90 focus-visible:ring-white"
                 onClick={handleScanNext}
               >
                 <ArrowRightCircle className="h-5 w-5" />

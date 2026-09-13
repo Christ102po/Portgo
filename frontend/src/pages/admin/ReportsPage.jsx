@@ -100,8 +100,8 @@ export default function ReportsPage() {
           onChange={setDateFilter}
         />
         <div className="flex gap-2">
-          <Select value={shipId || "ALL"} onValueChange={(v) => setShipId(v === "ALL" ? "" : v)} options={shipOptions} className="w-44" />
-          <Select value={route || "ALL"} onValueChange={(v) => setRoute(v === "ALL" ? "" : v)} options={ROUTE_OPTIONS} className="w-44" />
+          <Select value={shipId || "ALL"} onValueChange={(v) => setShipId(v === "ALL" ? "" : v)} options={shipOptions} className="w-full sm:w-44" />
+          <Select value={route || "ALL"} onValueChange={(v) => setRoute(v === "ALL" ? "" : v)} options={ROUTE_OPTIONS} className="w-full sm:w-44" />
         </div>
       </div>
 

@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PortStatusBanner className="-mx-8 -mt-8 mb-6 rounded-none sm:px-8" />
+      <PortStatusBanner className="-mx-3 -mt-3 mb-4 rounded-none px-3 sm:-mx-5 sm:-mt-5 sm:mb-6 sm:px-5 lg:-mx-8 lg:-mt-8 lg:px-8" />
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>

@@ -10,13 +10,34 @@
 }
 
 html {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
   background: #eef4f2;
+  -webkit-text-size-adjust: 100%;
 }
 
 html,
 body,
 #root {
+  width: 100%;
   min-height: 100%;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
 }
 
 body {
@@ -31,6 +52,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -54,7 +77,7 @@ textarea {
 
 @layer components {
   .mobile-screen {
-    @apply min-h-screen bg-transparent pb-[max(1rem,env(safe-area-inset-bottom))];
+    @apply min-h-[100dvh] w-full bg-transparent pb-[max(1rem,env(safe-area-inset-bottom))];
   }
 
   .app-surface {
@@ -81,6 +104,20 @@ textarea {
     .mobile-action-bar > button {
       width: auto;
     }
+  }
+
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .responsive-table-wrap {
+    @apply w-full max-w-full overflow-x-auto overscroll-x-contain rounded-2xl;
   }
 
   .tap-card {

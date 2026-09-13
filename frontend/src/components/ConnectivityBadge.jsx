@@ -14,7 +14,8 @@ export function ConnectivityBadge() {
       title={isOnline ? "Connected to the cloud" : "No connection — passenger logs saved locally"}
     >
       {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-      {isOnline ? "Online (Cloud Synced)" : "Offline (Local Backup)"}
+      <span className="hidden min-[420px]:inline">{isOnline ? "Online (Cloud Synced)" : "Offline (Local Backup)"}</span>
+      <span className="min-[420px]:hidden">{isOnline ? "Online" : "Offline"}</span>
     </span>
   );
 }

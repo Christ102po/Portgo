@@ -266,7 +266,7 @@ export default function GateScannerPage() {
       scanner
         .start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 280 } },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
           (decodedText) => handleCameraDecode(extractCode(decodedText)),
           () => {}
         )
@@ -304,7 +304,7 @@ export default function GateScannerPage() {
   const schedule = result?.trip?.schedule || result?.trips?.[0]?.schedule;
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#0A0F0B] text-white">
+    <div className="fixed inset-0 z-40 flex min-h-[100dvh] w-full flex-col bg-[#0A0F0B] text-white">
       {result?.kind === "success" && (
         <div key={flashKey} className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 animate-[gateWelcomeFlash_1s_ease-out_forwards] bg-emerald-400" />
@@ -471,7 +471,7 @@ export default function GateScannerPage() {
               )}
 
               {!result.isFamily && result.trip && (
-                <div className="mt-5 flex items-center gap-4 rounded-2xl bg-black/20 p-4 text-left">
+                <div className="mt-5 flex flex-col items-center gap-4 rounded-2xl bg-black/20 p-4 text-center sm:flex-row sm:text-left">
                   {result.trip.passenger.selfiePhotoUrl ? (
                     <img
                       src={result.trip.passenger.selfiePhotoUrl}

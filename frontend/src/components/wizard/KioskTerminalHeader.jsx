@@ -88,7 +88,7 @@ export function KioskTerminalHeader() {
   const timeStr = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
 
   return (
-    <div className="flex items-center justify-between border-b border-emerald-400/20 bg-slate-900 px-4 py-2.5 text-white shadow-[0_1px_20px_-4px_rgba(15,23,42,0.35)] sm:px-8 print:hidden">
+    <div className="flex flex-col gap-2 border-b border-emerald-400/20 bg-slate-900 px-4 py-2.5 text-white shadow-[0_1px_20px_-4px_rgba(15,23,42,0.35)] sm:px-8 min-[760px]:flex-row min-[760px]:items-center min-[760px]:justify-between print:hidden">
       <div className="flex min-w-0 items-center gap-2">
         <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
         <p className="truncate text-[11px] font-bold uppercase tracking-wider text-white sm:text-xs">
@@ -96,8 +96,8 @@ export function KioskTerminalHeader() {
           {t("kioskTitle")}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-teal-300 sm:text-xs">
+      <div className="scrollbar-hide flex w-full shrink-0 items-center gap-2 overflow-x-auto pb-0.5 min-[760px]:w-auto min-[760px]:overflow-visible min-[760px]:pb-0">
+        <div className="hidden shrink-0 items-center gap-1.5 font-mono text-[11px] font-semibold text-teal-300 min-[430px]:flex sm:text-xs">
           <Clock className="h-3.5 w-3.5" />
           <span>
             {dateStr} <span className="text-white/30">|</span> {timeStr}

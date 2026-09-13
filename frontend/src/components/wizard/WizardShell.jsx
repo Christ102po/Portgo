@@ -140,7 +140,7 @@ export function WizardShell() {
     <div className="mobile-screen">
       <div className="sticky top-0 z-30 print:hidden">
         <KioskTerminalHeader />
-        <div className="flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.9)] backdrop-blur-xl sm:px-8 sm:py-3.5">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-slate-950/95 px-3 py-3 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.9)] backdrop-blur-xl sm:px-8 sm:py-3.5">
           <div className="flex items-center gap-3.5">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center sm:h-14 sm:w-14">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 via-teal-400 to-teal-600 shadow-[0_0_26px_-4px_rgba(45,212,191,0.75)]" />
@@ -158,7 +158,7 @@ export function WizardShell() {
           <div className="flex items-center gap-3">
             <ConnectivityBadge />
             {!isSuccess && (
-              <span className="text-xs font-medium text-white/50">
+              <span className="hidden text-xs font-medium text-white/50 min-[420px]:inline">
                 Step {state.step} of {totalSteps}
               </span>
             )}
@@ -169,7 +169,7 @@ export function WizardShell() {
 
       {isLanding && <PortStatusBanner />}
 
-      <div className={cn("mx-auto flex w-full flex-col bg-transparent px-3 pb-5 pt-4 sm:px-5 sm:py-6", isWideStep ? "max-w-5xl" : "max-w-2xl")}>
+      <div className={cn("mx-auto flex w-full flex-col bg-transparent px-3 pb-5 pt-4 sm:px-5 sm:py-6", isWideStep ? "max-w-6xl" : "max-w-4xl")}>
         <header className="mb-4 text-center print:hidden sm:mb-6">
           <div className="mx-auto mb-3 inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-700 sm:hidden">Passenger Services</div>
           <h1 className="text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
@@ -212,7 +212,7 @@ export function WizardShell() {
           </div>
         )}
 
-        <div className="flex flex-1 items-start justify-center">
+        <div className="flex min-h-[42dvh] flex-1 items-start justify-center lg:min-h-[48dvh]">
           <div className={cn("w-full", !isSuccess && !isSuspended && "app-surface p-4 sm:p-6 md:p-7")}>
           {isSuspended && !isSuccess ? (
             <SuspendedNotice reason={advisory.suspendedReason} />

@@ -452,7 +452,7 @@ export function StepPersonalInfo() {
         </CardContent>
       </Card>
 
-      <div className="mt-6 flex justify-between">
+      <div className="mobile-action-bar">
         <Button variant="outline" size="lg" onClick={() => dispatch({ type: "PREV_STEP" })}>
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>

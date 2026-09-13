@@ -35,14 +35,14 @@ export function StepTransactionType() {
 
   return (
     <div>
-      <h2 className="mb-1 text-center text-xl font-bold tracking-tight text-slate-900">
+      <h2 className="section-title">
         {t("transactionQuestion")}
       </h2>
-      <p className="mb-6 text-center text-sm text-slate-500">
+      <p className="section-subtitle mb-5">
         {t("transactionSubtitle", portVars)}
       </p>
 
-      <div className="grid grid-cols-2 gap-4 my-6">
+      <div className="my-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         {OPTIONS.map((opt) => {
           const Icon = opt.icon;
           const selected = state.transactionType === opt.value;
@@ -52,7 +52,7 @@ export function StepTransactionType() {
               type="button"
               onClick={() => select(opt.value)}
               className={cn(
-                "group flex cursor-pointer flex-col items-start gap-3 rounded-2xl border-2 border-slate-200/80 bg-white p-6 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg",
+                "group flex min-h-[132px] cursor-pointer flex-row items-center gap-4 rounded-[22px] border border-slate-200/80 bg-white p-4 text-left shadow-[0_8px_30px_-22px_rgba(15,23,42,0.45)] transition-all duration-200 active:scale-[0.985] sm:min-h-[210px] sm:flex-col sm:items-start sm:p-5",
                 selected &&
                   "border-emerald-500 bg-emerald-50/40 shadow-md shadow-emerald-500/10 ring-4 ring-emerald-500/20"
               )}
@@ -82,7 +82,7 @@ export function StepTransactionType() {
         })}
       </div>
 
-      <div className="mt-6 flex justify-between">
+      <div className="mobile-action-bar">
         <Button variant="outline" size="lg" onClick={() => dispatch({ type: "PREV_STEP" })}>
           <ChevronLeft className="h-4 w-4" /> {t("back")}
         </Button>

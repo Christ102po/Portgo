@@ -46,7 +46,7 @@ export function StepPassengerType() {
 
   return (
     <div>
-      <div className="mx-auto mb-5 inline-flex w-full max-w-sm rounded-full border border-slate-200 bg-slate-100 p-1">
+      <div className="mx-auto mb-5 inline-flex w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5">
         {MODE_OPTIONS.map((opt) => {
           const Icon = opt.icon;
           const selected = (state.registrationMode || "INDIVIDUAL") === opt.value;
@@ -56,9 +56,9 @@ export function StepPassengerType() {
               type="button"
               onClick={() => selectMode(opt.value)}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all duration-300",
+                "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all duration-300",
                 selected
-                  ? "bg-slate-900 text-white shadow-md"
+                  ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
                   : "text-slate-500 hover:text-slate-900"
               )}
             >
@@ -69,16 +69,16 @@ export function StepPassengerType() {
         })}
       </div>
 
-      <h2 className="mb-1 text-center text-xl font-bold tracking-tight text-slate-900">
+      <h2 className="section-title">
         {t("passengerTypeQuestion")}
       </h2>
-      <p className="mb-6 text-center text-sm text-slate-500">
+      <p className="section-subtitle mb-5">
         {state.registrationMode === "GROUP"
           ? t("passengerTypeSubtitleGroup")
           : t("passengerTypeSubtitleIndividual")}
       </p>
 
-      <div className="grid grid-cols-2 gap-4 my-6">
+      <div className="my-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         {OPTIONS.map((opt) => {
           const Icon = opt.icon;
           const selected = opt.value === "TOURIST" ? isTouristType || touristExpanded : state.passengerType === opt.value;
@@ -88,7 +88,7 @@ export function StepPassengerType() {
               type="button"
               onClick={() => selectCard(opt.value)}
               className={cn(
-                "group relative rounded-2xl p-[2px] text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98]",
+                "group relative rounded-[22px] p-[1.5px] text-left transition-all duration-200 active:scale-[0.985]",
                 selected
                   ? "bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25"
                   : "bg-gradient-to-br from-slate-200 to-slate-100 shadow-sm hover:from-emerald-300 hover:to-teal-300 hover:shadow-lg hover:shadow-emerald-500/10"
@@ -96,13 +96,13 @@ export function StepPassengerType() {
             >
               <div
                 className={cn(
-                  "flex h-full flex-col items-start gap-3 rounded-[14px] bg-white p-6 transition-colors duration-300",
+                  "flex h-full min-h-[142px] flex-row items-center gap-4 rounded-[20px] bg-white p-4 transition-colors duration-300 sm:min-h-[190px] sm:flex-col sm:items-start sm:p-5",
                   selected && "bg-emerald-50/50"
                 )}
               >
                 <div
                   className={cn(
-                    "mb-2 flex h-16 w-16 items-center justify-center rounded-2xl text-xl transition-all duration-300",
+                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl transition-all duration-300 sm:mb-2 sm:h-16 sm:w-16",
                     selected
                       ? "scale-105 bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
                       : "bg-slate-100 text-slate-600 group-hover:scale-105 group-hover:bg-emerald-50 group-hover:text-emerald-500"

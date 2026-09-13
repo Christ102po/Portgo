@@ -137,19 +137,19 @@ export function WizardShell() {
   });
 
   return (
-    <div className="min-h-screen">
+    <div className="mobile-screen">
       <div className="sticky top-0 z-30 print:hidden">
         <KioskTerminalHeader />
-        <div className="flex items-center justify-between border-b border-white/10 bg-slate-900 px-4 py-3.5 sm:px-8">
+        <div className="flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.9)] backdrop-blur-xl sm:px-8 sm:py-3.5">
           <div className="flex items-center gap-3.5">
-            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center sm:h-14 sm:w-14">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 via-teal-400 to-teal-600 shadow-[0_0_26px_-4px_rgba(45,212,191,0.75)]" />
               <div className="absolute inset-[3px] rounded-full border-2 border-dashed border-white/50" />
               <div className="absolute inset-[7px] rounded-full bg-slate-950 ring-1 ring-white/20" />
-              <Anchor className="relative h-6 w-6 text-teal-300" />
+              <Anchor className="relative h-5 w-5 text-teal-300 sm:h-6 sm:w-6" />
             </div>
             <div className="leading-tight">
-              <span className="block text-lg font-black tracking-tight text-white sm:text-xl">PORTGO</span>
+              <span className="block text-base font-black tracking-[-0.03em] text-white sm:text-xl">PORTGO</span>
               <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-teal-300/80 sm:block">
                 Official PPA Passenger Terminal
               </span>
@@ -169,15 +169,16 @@ export function WizardShell() {
 
       {isLanding && <PortStatusBanner />}
 
-      <div className={cn("mx-auto flex w-full flex-col bg-transparent px-4 py-4", isWideStep ? "max-w-5xl" : "max-w-xl")}>
-        <header className="mb-6 text-center print:hidden">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+      <div className={cn("mx-auto flex w-full flex-col bg-transparent px-3 pb-5 pt-4 sm:px-5 sm:py-6", isWideStep ? "max-w-5xl" : "max-w-2xl")}>
+        <header className="mb-4 text-center print:hidden sm:mb-6">
+          <div className="mx-auto mb-3 inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-700 sm:hidden">Passenger Services</div>
+          <h1 className="text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
             {t("pageTitle")}
           </h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mx-auto mt-1.5 max-w-md text-sm font-medium leading-6 text-slate-500">
             {t("pageSubtitle")}
           </p>
-          <PortConditionMiniCard className="mt-3" />
+          <PortConditionMiniCard className="mt-3 sm:mt-4" />
           {isLanding && (
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Button
@@ -201,7 +202,7 @@ export function WizardShell() {
         </header>
 
         {!isSuccess && !isSuspended && (
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <StepIndicator
               currentStep={state.step}
               passengerType={state.passengerType}
@@ -212,6 +213,7 @@ export function WizardShell() {
         )}
 
         <div className="flex flex-1 items-start justify-center">
+          <div className={cn("w-full", !isSuccess && !isSuspended && "app-surface p-4 sm:p-6 md:p-7")}>
           {isSuspended && !isSuccess ? (
             <SuspendedNotice reason={advisory.suspendedReason} />
           ) : (
@@ -243,6 +245,7 @@ export function WizardShell() {
               )}
             </AnimatePresence>
           )}
+          </div>
         </div>
       </div>
 

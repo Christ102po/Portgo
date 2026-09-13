@@ -169,7 +169,7 @@ export function StepSelfieCapture() {
         </CardContent>
       </Card>
 
-      <div className="mt-8 flex justify-between">
+      <div className="mobile-action-bar">
         <Button
           variant="outline"
           size="lg"

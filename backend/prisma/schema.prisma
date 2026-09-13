@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  TICKETING_OFFICER
+  GATE_SCANNER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PassengerType {
+  LOCAL_RESIDENT
+  LOCAL_TOURIST
+  FOREIGN_TOURIST
+}
+
+enum VerificationDocumentType {
+  VALID_ID
+  STUDENT_ID
+  BARANGAY_CLEARANCE
+  PASSPORT
+}
+
+enum TransactionType {
+  SIGN_IN
+  SIGN_OUT
+}
+
+enum TripPurpose {
+  TOURISM
+  BUSINESS
+  RESIDENT_RETURN
+  CARGO
+  MEDICAL
+  EDUCATION
+  OTHER
+}
+
+enum TripStatus {
+  ACTIVE
+  BOARDED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  REBOOKED
+}
+
+enum Route {
+  SURIGAO_TO_DAPA
+  DAPA_TO_SURIGAO
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  DELAYED
+  MAINTENANCE
+  CANCELLED_WEATHER
+  CANCELLED_MAINTENANCE
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  SEDAN_SUV
+  TRUCK_CARGO
+}
+
+enum AccommodationClass {
+  ECONOMY
+  TOURIST_AIRCON
+  BUSINESS
+}
+
+model Admin {
+  id           String    @id @default(cuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+model Passenger {
+  id                     String        @id @default(cuid())
+  fullName               String
+  contactNumber          String?
+  gender                 Gender?
+  address                String?
+  passengerType          PassengerType
+  passportNumber         String?
+  nationality            String?
+  age                    Int?
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  isSeniorCitizen        Boolean       @default(false)
+  isPWD                  Boolean       @default(false)
+  isPregnant             Boolean       @default(false)
+  needsWheelchair        Boolean       @default(false)
+  isStudent              Boolean       @default(false)
+  isInfant               Boolean       @default(false)
+  isMedicalEmergency     Boolean       @default(false)
+  isPhoneVerified        Boolean       @default(false)
+  isEmailVerified        Boolean       @default(false)
+  isPassportVerified     Boolean       @default(false)
+  isFaceVerified         Boolean       @default(false)
+  faceMatchScore         Float?
+  selfiePhotoUrl         String?       @db.LongText
+  idNumber                  String?
+  verificationDocumentType  VerificationDocumentType?
+  verificationDocumentUrl   String?                    @db.LongText
+  isDocumentVerified        Boolean                    @default(false)
+  email                  String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  trips Trip[]
+
+  @@index([contactNumber])
+  @@index([passportNumber])
+  @@map("passengers")
+}
+
+model Trip {
+  id              String           @id @default(cuid())
+  passNumber      String           @unique
+  qrCodeData      String           @db.Text
+  transactionType TransactionType
+  purpose         TripPurpose
+  status          TripStatus       @default(ACTIVE)
+  hasVehicle      Boolean          @default(false)
+  vehicleType     VehicleType?
+  plateNumber     String?
+  ticketSerialNumber String?       @unique
+  ticketVesselName   String?
+  ticketTravelDate   String?
+  ticketVerified     Boolean       @default(false)
+  ticketPhotoUrl     String?       @db.LongText
+  accommodationClass AccommodationClass?
+  familyBookingId String?
+  statusReason    String?
+  statusUpdatedAt DateTime?
+  boardedAt       DateTime?
+  rebookedToTripId String?
+  refundRequested   Boolean   @default(false)
+  refundRequestedAt DateTime?
+  refundProcessed   Boolean   @default(false)
+  refundProcessedAt DateTime?
+  passengerId     String
+  shipId          String
+  scheduleId      String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  passenger      Passenger      @relation(fields: [passengerId], references: [id])
+  ship           Ship           @relation(fields: [shipId], references: [id])
+  schedule       Schedule       @relation(fields: [scheduleId], references: [id])
+  familyBooking  FamilyBooking? @relation(fields: [familyBookingId], references: [id])
+
+  @@index([passengerId])
+  @@index([shipId])
+  @@index([scheduleId])
+  @@index([createdAt])
+  @@index([familyBookingId])
+  @@map("trips")
+}
+
+model FamilyBooking {
+  id           String   @id @default(cuid())
+  masterCode   String   @unique
+  qrCodeData   String   @db.Text
+  headFullName String
+  headContact  String
+  memberCount  Int
+  createdAt    DateTime @default(now())
+
+  trips Trip[]
+
+  @@map("family_bookings")
+}
+
+model Ship {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  capacity  Int      @default(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trips     Trip[]
+  schedules Schedule[]
+  classes   ShipClass[]
+
+  @@map("ships")
+}
+
+model ShipClass {
+  id        String              @id @default(cuid())
+  shipId    String
+  className AccommodationClass
+  capacity  Int
+
+  ship Ship @relation(fields: [shipId], references: [id])
+
+  @@unique([shipId, className])
+  @@index([shipId])
+  @@map("ship_classes")
+}
+
+model Schedule {
+  id                 String         @id @default(cuid())
+  route              Route
+  departureTime      String
+  daysOfWeek         String
+  voyageNumber       String?
+  gateNumber         String?
+  active             Boolean        @default(true)
+  status             ScheduleStatus @default(ACTIVE)
+  cancellationReason String?
+  cancelledAt        DateTime?
+  delayMinutes       Int?
+  delayReason        String?
+  delayedAt          DateTime?
+  shipId             String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  ship  Ship   @relation(fields: [shipId], references: [id])
+  trips Trip[]
+
+  @@index([shipId])
+  @@map("schedules")
+}
+
+model PortAdvisory {
+  id              String    @id @default(cuid())
+  active          Boolean   @default(false)
+  message         String?   @db.Text
+  activatedAt     DateTime?
+  suspended       Boolean   @default(false)
+  suspendedReason String?   @db.Text
+  suspendedAt     DateTime?
+  updatedBy       String?
+  updatedAt       DateTime  @updatedAt
+
+  @@map("port_advisory")
+}
+
+model WatchlistEntry {
+  id             String   @id @default(cuid())
+  fullName       String
+  passportNumber String?
+  contactNumber  String?
+  reason         String   @db.Text
+  active         Boolean  @default(true)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([passportNumber])
+  @@index([contactNumber])
+  @@map("watchlist_entries")
+}
+
+model ManifestSignOff {
+  id               String   @id @default(cuid())
+  scheduleId       String   @unique
+  officerName      String
+  badgeNumber      String
+  signatureDataUrl String   @db.LongText
+  adminId          String?
+  adminName        String?
+  signedAt         DateTime @default(now())
+
+  @@map("manifest_signoffs")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  adminEmail String?
+  adminName  String?
+  action     String
+  details    String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([adminId])
+  @@map("audit_logs")
+}
+
+// LGU-provided masterlist of Barangay residents (Dapa / Surigao), imported
+// by admin staff via CSV. Powers the kiosk's Full Name autocomplete for
+// Local Resident registrations — selecting a match auto-fills Gender/Age/
+// Address and counts as Barangay Clearance / Registry verification.
+model BarangayResident {
+  id           String   @id @default(cuid())
+  fullName     String
+  gender       Gender?
+  age          Int?
+  barangay     String
+  municipality String?
+  status       String   @default("Active")
+  phoneNumber  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([fullName])
+  @@map("barangay_residents")
+}

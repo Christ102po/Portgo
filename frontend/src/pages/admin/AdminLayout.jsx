@@ -4,16 +4,25 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { useAuth } from "../../hooks/useAuth";
+import { cn } from "../../lib/cn";
 
 const PORTAL_HOME = {
   TICKETING_OFFICER: "/admin/ticketing",
   GATE_SCANNER: "/admin/gate-scanner",
 };
 
+const SIDEBAR_STORAGE_KEY = "portgo-admin-sidebar-collapsed";
+
+function getInitialSidebarState() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+}
+
 export default function AdminLayout() {
   const location = useLocation();
   const { admin } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarState);
 
   const restrictedHome = admin ? PORTAL_HOME[admin.role] : null;
 
@@ -21,13 +30,23 @@ export default function AdminLayout() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
+
   if (restrictedHome && location.pathname !== restrictedHome) {
     return <Navigate to={restrictedHome} replace />;
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-surface lg:flex">
-      <Sidebar className="sticky top-0 hidden lg:flex" />
+    <div className="min-h-[100dvh] w-full bg-surface">
+      {/* Desktop sidebar stays fixed while the page content scrolls. */}
+      <Sidebar
+        className="fixed inset-y-0 left-0 z-40 hidden lg:flex"
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+        allowCollapse
+      />
 
       <AnimatePresence>
         {mobileNavOpen && (
@@ -50,6 +69,7 @@ export default function AdminLayout() {
             >
               <Sidebar
                 className="w-[min(19rem,88vw)] shadow-2xl"
+                collapsed={false}
                 onNavigate={() => setMobileNavOpen(false)}
               />
             </motion.div>
@@ -57,9 +77,14 @@ export default function AdminLayout() {
         )}
       </AnimatePresence>
 
-      <div className="flex min-h-[100dvh] min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-[100dvh] min-w-0 flex-col transition-[padding] duration-300",
+          sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
+        )}
+      >
         <Topbar onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-8">
+        <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-4 md:p-5 lg:p-6 xl:p-7">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -1,9 +1,10 @@
 const prisma = require("../lib/prisma");
 const { generatePassNumber, generateQrDataUrl } = require("../lib/qrcode");
 const { sendRegistrationEmail } = require("../lib/registrationEmail");
+const { sendRegistrationSms } = require("../lib/registrationSms");
 const { logAudit } = require("../lib/audit");
 const { getOrCreateSingleton: getAdvisorySingleton } = require("./advisory.controller");
-const { verifyPhoneVerificationToken } = require("../lib/phoneVerificationToken");
+const { verifyOtpVerificationToken } = require("../lib/otpVerificationToken");
 
 const MAX_ATTEMPTS = 3;
 const BOOKABLE_SCHEDULE_STATUSES = ["ACTIVE", "DELAYED"];
@@ -27,6 +28,7 @@ function generateMasterCode() {
 async function create(req, res) {
   const {
     headContact,
+    phoneVerificationToken,
     headEmail,
     gender,
     address,
@@ -40,20 +42,17 @@ async function create(req, res) {
     shipId,
     scheduleId,
     accommodationClass,
-    phoneVerificationToken,
     members,
   } = req.body;
 
   const isForeignTourist = passengerType === "FOREIGN_TOURIST";
 
-  if (!isForeignTourist && !req.admin) {
-    const verification = verifyPhoneVerificationToken(phoneVerificationToken, headContact);
-    if (!verification.ok) {
-      return res.status(403).json({
-        code: "PHONE_VERIFICATION_REQUIRED",
-        message: verification.message,
-      });
-    }
+  const phoneProof = verifyOtpVerificationToken(phoneVerificationToken, headContact);
+  if (!phoneProof.ok) {
+    return res.status(401).json({
+      code: "PHONE_VERIFICATION_REQUIRED",
+      message: phoneProof.message,
+    });
   }
 
   const advisory = await getAdvisorySingleton();
@@ -160,7 +159,7 @@ async function create(req, res) {
               isStudent: !!member.isStudent,
               isInfant: !!member.isInfant,
               isMedicalEmergency: !!member.isMedicalEmergency,
-              isPhoneVerified: !isForeignTourist,
+              isPhoneVerified: true,
             },
           });
 
@@ -214,6 +213,13 @@ async function create(req, res) {
       ship,
       schedule,
     }),
+    sms: await sendRegistrationSms({
+      contactNumber: headContact,
+      fullName: familyLabel,
+      referenceCode: result.familyBooking.masterCode,
+      ship,
+      schedule,
+    }),
   };
 
   res.status(201).json({
@@ -227,4 +233,34 @@ async function create(req, res) {
   });
 }
 
-module.exports = { create };
+async function resendSms(req, res) {
+  const { id } = req.params;
+  const familyBooking = await prisma.familyBooking.findUnique({
+    where: { id },
+    include: { trips: { include: { ship: true, schedule: true } } },
+  });
+  if (!familyBooking || familyBooking.trips.length === 0) {
+    return res.status(404).json({ message: "Family booking not found" });
+  }
+
+  const { ship, schedule } = familyBooking.trips[0];
+  const sms = await sendRegistrationSms({
+    contactNumber: familyBooking.headContact,
+    fullName: `${familyBooking.headFullName} & Family (${familyBooking.memberCount})`,
+    referenceCode: familyBooking.masterCode,
+    ship,
+    schedule,
+  });
+
+  await logAudit(
+    req,
+    "REGISTRATION_SMS_RESENT",
+    `Resent registration SMS for ${familyBooking.headFullName} & Family (${familyBooking.masterCode}) — ${
+      sms.sent ? "delivered" : `failed: ${sms.reason}`
+    }`
+  );
+
+  res.json({ sms });
+}
+
+module.exports = { create, resendSms };

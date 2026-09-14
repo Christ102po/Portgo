@@ -5,7 +5,6 @@ import { Button } from "../ui/Button";
 import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { apiClient } from "../../lib/apiClient";
-import { enqueue } from "../../lib/offlineQueue";
 import { priorityFlags } from "../../lib/priority";
 import { useToast } from "../ui/Toast";
 import { passengerTypeLabel } from "../../lib/verification";
@@ -44,7 +43,7 @@ export function StepGroupConfirmation() {
   function buildPayload() {
     return {
       headContact: state.phone,
-      phoneVerificationToken: state.phoneVerificationToken || undefined,
+      phoneVerificationToken: state.groupPhoneVerificationToken,
       headEmail: state.email || undefined,
       gender: state.gender,
       address: state.address,
@@ -79,16 +78,10 @@ export function StepGroupConfirmation() {
     const payload = buildPayload();
 
     if (!navigator.onLine) {
-      const record = enqueue("/family-bookings", payload);
-      dispatch({
-        type: "SET_RESULT",
-        result: {
-          offline: true,
-          isFamily: true,
-          localId: record.localId,
-          headFullName: state.fullName,
-          memberCount: payload.members.length,
-        },
+      showToast({
+        title: "Internet connection required",
+        description: "Group registration uses SMS OTP verification and must be submitted while online.",
+        variant: "error",
       });
       setIsSubmitting(false);
       return;
@@ -99,30 +92,24 @@ export function StepGroupConfirmation() {
       dispatch({ type: "SET_RESULT", result: { ...res.data, isFamily: true } });
     } catch (err) {
       if (!err.response) {
-        const record = enqueue("/family-bookings", payload);
-        dispatch({
-          type: "SET_RESULT",
-          result: {
-            offline: true,
-            isFamily: true,
-            localId: record.localId,
-            headFullName: state.fullName,
-            memberCount: payload.members.length,
-          },
+        showToast({
+          title: "Connection lost",
+          description: "Reconnect to the internet and submit the group again while the phone verification is still valid.",
+          variant: "error",
         });
         return;
       }
-      if (err.response?.status === 403 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
-        showToast({
-          title: "Verify your phone again",
-          description: err.response?.data?.message || "Your phone verification expired or no longer matches this number.",
-          variant: "error",
-        });
+      if (err.response?.status === 401 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
         dispatch({
           type: "SET_FIELDS",
-          fields: { isPhoneVerified: false, phoneVerificationToken: null },
+          fields: { isPhoneVerified: false, groupPhoneVerificationToken: "" },
         });
-        dispatch({ type: "GOTO_STEP", step: 2 });
+        showToast({
+          title: "Phone verification required",
+          description: err.response?.data?.message || "Please verify the primary contact number again.",
+          variant: "error",
+        });
+        dispatch({ type: "GOTO_STEP", step: 3 });
         return;
       }
       if (err.response?.status === 409) {

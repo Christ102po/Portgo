@@ -8,8 +8,9 @@ const loginSchema = z.object({
 
 const otpSendSchema = z.object({
   phone: z.string().min(4),
+  channel: z.enum(["sms", "email"]).optional(),
 }).refine(
-  (data) => isValidPhMobileNumber(data.phone),
+  (data) => (data.channel === "email" ? z.string().email().safeParse(data.phone).success : isValidPhMobileNumber(data.phone)),
   { message: INVALID_PH_PREFIX_MESSAGE, path: ["phone"] }
 );
 
@@ -62,7 +63,6 @@ const passengerCreateSchema = z.object({
   ticketVerified: z.boolean().optional(),
   ticketPhotoUrl: z.string().optional().nullable(),
   accommodationClass: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
-  phoneVerificationToken: z.string().min(20).optional(),
 }).superRefine((data, ctx) => {
   if (data.passengerType !== "FOREIGN_TOURIST" && data.contactNumber && !isValidPhMobileNumber(data.contactNumber)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["contactNumber"] });
@@ -84,6 +84,7 @@ const familyMemberSchema = z.object({
 
 const familyBookingCreateSchema = z.object({
   headContact: z.string().min(7),
+  phoneVerificationToken: z.string().min(1, "Phone verification is required"),
   headEmail: z.string().email().optional().nullable().or(z.literal("")),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   address: z.string().min(1),
@@ -97,8 +98,11 @@ const familyBookingCreateSchema = z.object({
   shipId: z.string().min(1),
   scheduleId: z.string().min(1),
   accommodationClass: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
-  phoneVerificationToken: z.string().min(20).optional(),
   members: z.array(familyMemberSchema).min(2),
+}).superRefine((data, ctx) => {
+  if (!isValidPhMobileNumber(data.headContact)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["headContact"] });
+  }
 });
 
 const shipCreateSchema = z.object({

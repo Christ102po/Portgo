@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CloudLightning, AlertTriangle } from "lucide-react";
+import { CloudLightning, AlertTriangle, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "../ui/Dialog";
 import { Switch } from "../ui/Switch";
 import { Input } from "../ui/Input";
@@ -14,6 +14,7 @@ export function WeatherAdvisoryControl() {
   const [open, setOpen] = useState(false);
   const [draftActive, setDraftActive] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
+  const [broadcastSms, setBroadcastSms] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingBulkCancel, setConfirmingBulkCancel] = useState(false);
   const [isBulkCancelling, setIsBulkCancelling] = useState(false);
@@ -46,7 +47,18 @@ export function WeatherAdvisoryControl() {
         variant: draftActive ? "info" : "success",
       });
 
-
+      if (draftActive && !wasActive && broadcastSms) {
+        try {
+          const smsRes = await apiClient.post("/advisory/broadcast-sms", { message: draftMessage || undefined });
+          showToast({
+            title: "SMS alert broadcast sent",
+            description: `Sent to ${smsRes.data.sent} of ${smsRes.data.total} passenger(s) with active bookings.`,
+            variant: "info",
+          });
+        } catch {
+          showToast({ title: "SMS broadcast failed", description: "Advisory was still saved.", variant: "error" });
+        }
+      }
 
       if (!draftActive) setOpen(false);
     } finally {
@@ -114,6 +126,20 @@ export function WeatherAdvisoryControl() {
             />
           </div>
 
+          {draftActive && (
+            <label className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              <input
+                type="checkbox"
+                checked={broadcastSms}
+                onChange={(e) => setBroadcastSms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-blue-600"
+              />
+              <span className="flex items-start gap-1.5">
+                <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Also send an SMS alert to every passenger with an active booking
+              </span>
+            </label>
+          )}
 
           <Button className="w-full" onClick={handleSave} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save Advisory"}

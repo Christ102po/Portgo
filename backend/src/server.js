@@ -6,6 +6,7 @@ const fs = require("fs");
 
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { verifyMailer } = require("./lib/mailer");
+const { verifySemaphoreConfiguration } = require("./lib/semaphore");
 
 const authRoutes = require("./routes/auth.routes");
 const otpRoutes = require("./routes/otp.routes");
@@ -107,4 +108,19 @@ const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Backend running on http://0.0.0.0:${PORT} (reachable from LAN devices)`);
   verifyMailer();
+
+  verifySemaphoreConfiguration()
+    .then((status) => {
+      if (status.ok) {
+        console.log(
+          `[Semaphore] Connected. Account status: ${status.accountStatus}; ` +
+            `credits: ${status.creditBalance ?? "unknown"}; sender: ${status.senderName}`
+        );
+      } else {
+        console.error(`[Semaphore] Configuration problem: ${status.message}`);
+      }
+    })
+    .catch((error) => {
+      console.error(`[Semaphore] Configuration check failed: ${error?.message || error}`);
+    });
 });

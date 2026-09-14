@@ -27,11 +27,13 @@ Go to **Railway → PORTGO service → Variables** and add:
 SEMAPHORE_API_KEY=your_real_semaphore_api_key
 ```
 
-Optional, only after that Sender Name is approved:
+Recommended (and required if your account does not already have a registered/default Sender Name):
 
 ```env
 SEMAPHORE_SENDER_NAME=PORTGO
 ```
+
+The value must exactly match an **active/approved** Sender Name in Semaphore.
 
 Do **not** put the real API key in GitHub or commit it to an `.env` file.
 
@@ -42,7 +44,9 @@ TEXTBEE_API_KEY
 TEXTBEE_DEVICE_ID
 ```
 
-After changing Railway variables, deploy/redeploy the newest commit.
+Paste Railway values without wrapping quotes. After changing Railway variables, deploy/redeploy the newest commit.
+
+On startup, the updated backend checks the Semaphore account and Sender Name without sending an SMS. In Railway logs, look for either `[Semaphore] Connected...` or `[Semaphore] Configuration problem...`.
 
 ## 4. Phone-number handling
 

@@ -71,7 +71,9 @@ async function send(req, res) {
       success: false,
       channel: "sms",
       smsSent: false,
-      message: "We couldn't send the SMS. Please check the number and SMS service configuration, then try again.",
+      message:
+        smsResult.userMessage ||
+        "We couldn't send the SMS. Please check the number and SMS service configuration, then try again.",
     });
   }
 

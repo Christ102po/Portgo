@@ -1,4 +1,4 @@
-const { sendSms } = require("./textbee");
+const { sendSms } = require("./semaphore");
 
 function getFrontendBaseUrl() {
   // Links in email/SMS are opened on the passenger's own phone, so prefer an

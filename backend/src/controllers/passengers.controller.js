@@ -226,7 +226,7 @@ async function create(req, res) {
             isStudent: !!isStudent,
             isInfant: !!isInfant,
             isMedicalEmergency: !!isMedicalEmergency,
-            isPhoneVerified: !isForeignTourist,
+            isPhoneVerified: !isForeignTourist && !!contactNumber,
             isPassportVerified: isForeignTourist && !!isPassportVerified,
             isFaceVerified: isForeignTourist && !!isFaceVerified,
             faceMatchScore: isForeignTourist && faceMatchScore != null ? faceMatchScore : null,

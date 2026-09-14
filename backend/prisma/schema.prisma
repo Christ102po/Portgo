@@ -185,7 +185,7 @@ model FamilyBooking {
   masterCode   String   @unique
   qrCodeData   String   @db.Text
   headFullName String
-  headContact  String
+  headContact  String?
   memberCount  Int
   createdAt    DateTime @default(now())
 

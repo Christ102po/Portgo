@@ -79,7 +79,7 @@ export function StepConfirmation() {
               : undefined,
           }
         : {
-            contactNumber: state.phone,
+            contactNumber: state.contactVerificationChannel === "sms" ? state.phone : undefined,
             gender: state.gender,
             age: state.age ? Number(state.age) : undefined,
             address: state.address,

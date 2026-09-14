@@ -107,7 +107,7 @@ async function verify(req, res) {
   return res.json({
     verified: true,
     verificationToken,
-    message: "Phone number verified",
+    message: "Contact verified",
   });
 }
 

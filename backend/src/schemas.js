@@ -9,10 +9,15 @@ const loginSchema = z.object({
 const otpSendSchema = z.object({
   phone: z.string().min(4),
   channel: z.enum(["sms", "email"]).optional(),
-}).refine(
-  (data) => (data.channel === "email" ? z.string().email().safeParse(data.phone).success : isValidPhMobileNumber(data.phone)),
-  { message: INVALID_PH_PREFIX_MESSAGE, path: ["phone"] }
-);
+}).superRefine((data, ctx) => {
+  if (data.channel === "email") {
+    if (!z.string().email().safeParse(data.phone).success) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid email address.", path: ["phone"] });
+    }
+  } else if (!isValidPhMobileNumber(data.phone)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["phone"] });
+  }
+});
 
 const otpVerifySchema = z.object({
   phone: z.string().min(4),
@@ -83,9 +88,11 @@ const familyMemberSchema = z.object({
 });
 
 const familyBookingCreateSchema = z.object({
-  headContact: z.string().min(7),
-  phoneVerificationToken: z.string().min(1, "Phone verification is required"),
+  headContact: z.string().min(7).optional().nullable().or(z.literal("")),
   headEmail: z.string().email().optional().nullable().or(z.literal("")),
+  verificationIdentifier: z.string().min(4),
+  verificationChannel: z.enum(["sms", "email"]),
+  phoneVerificationToken: z.string().min(1, "Contact verification is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   address: z.string().min(1),
   passengerType: z.enum(PASSENGER_TYPE_VALUES),
@@ -100,8 +107,20 @@ const familyBookingCreateSchema = z.object({
   accommodationClass: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
   members: z.array(familyMemberSchema).min(2),
 }).superRefine((data, ctx) => {
-  if (!isValidPhMobileNumber(data.headContact)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["headContact"] });
+  if (data.verificationChannel === "sms") {
+    if (!data.headContact || !isValidPhMobileNumber(data.headContact)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["headContact"] });
+    }
+    if (data.verificationIdentifier !== data.headContact) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Verified phone number does not match the primary contact.", path: ["verificationIdentifier"] });
+    }
+  } else {
+    if (!data.headEmail || !z.string().email().safeParse(data.headEmail).success) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A valid verified email address is required.", path: ["headEmail"] });
+    }
+    if (String(data.verificationIdentifier || "").trim().toLowerCase() !== String(data.headEmail || "").trim().toLowerCase()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Verified email does not match the primary contact email.", path: ["verificationIdentifier"] });
+    }
   }
 });
 

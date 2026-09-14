@@ -28,8 +28,10 @@ function generateMasterCode() {
 async function create(req, res) {
   const {
     headContact,
-    phoneVerificationToken,
     headEmail,
+    verificationIdentifier,
+    verificationChannel,
+    phoneVerificationToken,
     gender,
     address,
     passengerType,
@@ -47,11 +49,11 @@ async function create(req, res) {
 
   const isForeignTourist = passengerType === "FOREIGN_TOURIST";
 
-  const phoneProof = verifyOtpVerificationToken(phoneVerificationToken, headContact);
-  if (!phoneProof.ok) {
+  const contactProof = verifyOtpVerificationToken(phoneVerificationToken, verificationIdentifier);
+  if (!contactProof.ok) {
     return res.status(401).json({
-      code: "PHONE_VERIFICATION_REQUIRED",
-      message: phoneProof.message,
+      code: "CONTACT_VERIFICATION_REQUIRED",
+      message: contactProof.message,
     });
   }
 
@@ -130,7 +132,7 @@ async function create(req, res) {
             masterCode,
             qrCodeData: masterQrCodeData,
             headFullName,
-            headContact,
+            headContact: headContact || null,
             memberCount: members.length,
           },
         });
@@ -142,7 +144,7 @@ async function create(req, res) {
           const passenger = await tx.passenger.create({
             data: {
               fullName: member.fullName,
-              contactNumber: headContact,
+              contactNumber: headContact || null,
               email: headEmail || null,
               gender: member.gender || gender,
               address,
@@ -159,7 +161,8 @@ async function create(req, res) {
               isStudent: !!member.isStudent,
               isInfant: !!member.isInfant,
               isMedicalEmergency: !!member.isMedicalEmergency,
-              isPhoneVerified: true,
+              isPhoneVerified: verificationChannel === "sms",
+              isEmailVerified: verificationChannel === "email",
             },
           });
 
@@ -241,6 +244,10 @@ async function resendSms(req, res) {
   });
   if (!familyBooking || familyBooking.trips.length === 0) {
     return res.status(404).json({ message: "Family booking not found" });
+  }
+
+  if (!familyBooking.headContact) {
+    return res.status(400).json({ message: "This booking was verified by email and has no SMS contact number." });
   }
 
   const { ship, schedule } = familyBooking.trips[0];

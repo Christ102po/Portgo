@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, Phone, BadgeCheck, XCircle, MessageSquareText, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Phone, Mail, BadgeCheck, XCircle, MessageSquareText, ShieldCheck } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
@@ -11,18 +11,27 @@ import { Card, CardContent } from "../ui/Card";
 import { formatPhonePH, isValidPhonePH, phoneDigits } from "../../lib/format";
 import { hasPhMobileFormat, isValidPhMobilePrefix, INVALID_PH_PREFIX_MESSAGE } from "../../lib/phPrefixes";
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
 export function StepPhoneVerification() {
   const { state, dispatch } = useWizard();
+  const [verificationMethod, setVerificationMethod] = useState(state.email && !state.phone ? "email" : "sms");
   const [isSending, setIsSending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [codeSent, setCodeSent] = useState(false);
-  const lastAutoPhoneRef = useRef("");
+  const lastAutoIdentifierRef = useRef("");
   const { showToast } = useToast();
+
   const digits = phoneDigits(state.phone);
   const hasBasicFormat = hasPhMobileFormat(digits);
   const hasInvalidPrefix = hasBasicFormat && !isValidPhMobilePrefix(digits);
   const phoneIsValid = isValidPhonePH(state.phone);
+  const emailIsValid = isValidEmail(state.email);
+  const identifier = verificationMethod === "email" ? state.email.trim() : state.phone;
+  const identifierIsValid = verificationMethod === "email" ? emailIsValid : phoneIsValid;
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -30,17 +39,43 @@ export function StepPhoneVerification() {
     return () => clearInterval(id);
   }, [cooldown]);
 
+  function changeMethod(method) {
+    setVerificationMethod(method);
+    setCodeSent(false);
+    setModalOpen(false);
+    setCooldown(0);
+    lastAutoIdentifierRef.current = "";
+    dispatch({
+      type: "SET_FIELDS",
+      fields: {
+        isPhoneVerified: false,
+        isEmailVerified: false,
+        groupPhoneVerificationToken: "",
+        contactVerificationIdentifier: "",
+        contactVerificationChannel: method,
+        contactVerificationToken: "",
+      },
+    });
+  }
+
   async function handleSendCode() {
-    if (!phoneIsValid || cooldown > 0 || isSending) return;
+    if (!identifierIsValid || cooldown > 0 || isSending) return;
     setIsSending(true);
     try {
-      const res = await apiClient.post("/otp/send", { phone: state.phone });
+      const res = await apiClient.post("/otp/send", {
+        phone: identifier,
+        channel: verificationMethod,
+      });
       setCodeSent(true);
       setModalOpen(true);
       setCooldown(60);
       showToast({
         title: "Verification code sent",
-        description: res.data.message || "Check your phone for the 6-digit verification code.",
+        description:
+          res.data.message ||
+          (verificationMethod === "email"
+            ? "Check your email for the 6-digit verification code."
+            : "Check your phone for the 6-digit verification code."),
         variant: "info",
       });
     } catch (err) {
@@ -48,7 +83,7 @@ export function StepPhoneVerification() {
       const fieldMessage = err.response?.data?.details?.fieldErrors?.phone?.[0];
       showToast({
         title: "Failed to send code",
-        description: fieldMessage || err.response?.data?.message || "Please check your connection and try the number again.",
+        description: fieldMessage || err.response?.data?.message || "Please check your details and try again.",
         variant: "error",
       });
     } finally {
@@ -56,35 +91,32 @@ export function StepPhoneVerification() {
     }
   }
 
-  // No Send OTP button is needed. As soon as a complete, valid PH mobile
-  // number is entered, wait briefly for typing to settle and send the OTP once.
+  // Automatically send after a complete valid phone number OR email address.
   useEffect(() => {
-    const normalized = phoneDigits(state.phone);
+    const normalized = verificationMethod === "email" ? state.email.trim().toLowerCase() : phoneDigits(state.phone);
 
-    if (!phoneIsValid) {
-      lastAutoPhoneRef.current = "";
+    if (!identifierIsValid) {
+      lastAutoIdentifierRef.current = "";
       setCodeSent(false);
       return;
     }
     if (state.isPhoneVerified || isSending || cooldown > 0) return;
-    if (lastAutoPhoneRef.current === normalized) return;
+    if (lastAutoIdentifierRef.current === normalized) return;
 
     const timer = window.setTimeout(() => {
-      lastAutoPhoneRef.current = normalized;
+      lastAutoIdentifierRef.current = normalized;
       handleSendCode();
-    }, 450);
+    }, verificationMethod === "email" ? 700 : 450);
 
     return () => window.clearTimeout(timer);
-    // handleSendCode intentionally reads the latest render state. The guarded
-    // fields below prevent duplicate automatic sends.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.phone, phoneIsValid, state.isPhoneVerified, isSending, cooldown]);
+  }, [state.phone, state.email, verificationMethod, identifierIsValid, state.isPhoneVerified, isSending, cooldown]);
 
   return (
     <div>
-      <h2 className="section-title">Verify Your Phone Number</h2>
+      <h2 className="section-title">Verify Your Contact</h2>
       <p className="section-subtitle mb-6">
-        Enter your mobile number. PORTGO will automatically send the OTP as soon as the number is complete.
+        Choose SMS or email. PORTGO automatically sends the OTP once your contact information is complete.
       </p>
 
       <Card className="mx-auto max-w-md overflow-hidden border-emerald-100 shadow-[0_22px_50px_-32px_rgba(6,78,59,0.65)]">
@@ -95,49 +127,91 @@ export function StepPhoneVerification() {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">Secure verification</p>
-              <p className="mt-0.5 text-lg font-black">SMS OTP</p>
+              <p className="mt-0.5 text-lg font-black">OTP Verification</p>
             </div>
           </div>
         </div>
 
         <CardContent className="pt-5 sm:pt-6">
-          <Label htmlFor="phone">Contact Number</Label>
-          <div className="relative">
-            <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
-            <Input
-              id="phone"
-              className="h-14 rounded-2xl border-emerald-100 bg-emerald-50/45 pl-10 text-base font-bold tracking-wide focus:border-emerald-500 focus:bg-white"
-              placeholder="0917-123-4567"
-              inputMode="numeric"
-              autoComplete="tel"
-              maxLength={13}
-              value={state.phone}
-              onChange={(e) =>
-                dispatch({ type: "SET_FIELD", field: "phone", value: formatPhonePH(e.target.value) })
-              }
-            />
+          <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5">
+            <button
+              type="button"
+              onClick={() => changeMethod("sms")}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition ${
+                verificationMethod === "sms" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Phone className="h-4 w-4" /> SMS
+            </button>
+            <button
+              type="button"
+              onClick={() => changeMethod("email")}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition ${
+                verificationMethod === "email" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Mail className="h-4 w-4" /> Email
+            </button>
           </div>
 
-          <p className="mt-2 text-xs leading-5 text-slate-500">
-            No send button needed — OTP delivery starts automatically after a valid 11-digit Philippine mobile number is entered.
-          </p>
+          {verificationMethod === "sms" ? (
+            <>
+              <Label htmlFor="phone">Mobile Number</Label>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                <Input
+                  id="phone"
+                  className="h-14 rounded-2xl border-emerald-100 bg-emerald-50/45 pl-10 text-base font-bold tracking-wide focus:border-emerald-500 focus:bg-white"
+                  placeholder="0917-123-4567"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={13}
+                  value={state.phone}
+                  onChange={(e) => dispatch({ type: "SET_FIELD", field: "phone", value: formatPhonePH(e.target.value) })}
+                />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                No send button needed — OTP is sent automatically after a valid Philippine mobile number is entered.
+              </p>
 
-          {state.phone && !phoneIsValid && hasInvalidPrefix && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-              <XCircle className="h-4 w-4 shrink-0 text-red-600" />
-              <p className="text-xs font-semibold text-red-700">{INVALID_PH_PREFIX_MESSAGE}</p>
-            </div>
-          )}
-          {state.phone && !phoneIsValid && !hasInvalidPrefix && (
-            <p className="mt-3 text-xs font-medium text-red-600">
-              Complete the number using this format: 0917-123-4567.
-            </p>
+              {state.phone && !phoneIsValid && hasInvalidPrefix && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                  <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+                  <p className="text-xs font-semibold text-red-700">{INVALID_PH_PREFIX_MESSAGE}</p>
+                </div>
+              )}
+              {state.phone && !phoneIsValid && !hasInvalidPrefix && (
+                <p className="mt-3 text-xs font-medium text-red-600">Complete the number using this format: 0917-123-4567.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <Label htmlFor="verificationEmail">Email Address</Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                <Input
+                  id="verificationEmail"
+                  type="email"
+                  className="h-14 rounded-2xl border-emerald-100 bg-emerald-50/45 pl-10 text-base font-semibold focus:border-emerald-500 focus:bg-white"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  value={state.email}
+                  onChange={(e) => dispatch({ type: "SET_FIELD", field: "email", value: e.target.value.trimStart() })}
+                />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                If you do not have a mobile number, enter your email. The 6-digit code is sent automatically once the email is valid.
+              </p>
+              {state.email && !emailIsValid && (
+                <p className="mt-3 text-xs font-medium text-red-600">Enter a valid email address, for example name@gmail.com.</p>
+              )}
+            </>
           )}
 
           {isSending && (
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800">
               <MessageSquareText className="h-4 w-4 animate-pulse" />
-              Number complete — sending your OTP automatically...
+              Contact complete — sending your OTP automatically...
             </div>
           )}
 
@@ -149,7 +223,7 @@ export function StepPhoneVerification() {
             >
               <span className="flex items-center gap-2">
                 <MessageSquareText className="h-4 w-4 shrink-0" />
-                Code sent to {state.phone}. Tap to enter the OTP.
+                Code sent to {identifier}. Tap to enter the OTP.
               </span>
               <span className="text-xs text-emerald-600">Open</span>
             </button>
@@ -158,7 +232,7 @@ export function StepPhoneVerification() {
           {state.isPhoneVerified && (
             <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200">
               <BadgeCheck className="h-4 w-4" />
-              Phone number verified.
+              {verificationMethod === "email" ? "Email address verified." : "Phone number verified."}
             </div>
           )}
         </CardContent>
@@ -182,21 +256,26 @@ export function StepPhoneVerification() {
       <OtpModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        phone={state.phone}
+        phone={identifier}
         defaultEmail={state.email}
+        initialChannel={verificationMethod}
         cooldown={cooldown}
         onResend={handleSendCode}
         allowEmailFallback={false}
-        onVerified={({ channel, identifier } = {}) => {
+        onVerified={({ channel, identifier: verifiedIdentifier, verificationToken } = {}) => {
           setCodeSent(false);
-          if (channel === "email" && identifier && identifier.includes("@")) {
-            dispatch({
-              type: "SET_FIELDS",
-              fields: { isPhoneVerified: true, email: identifier, isEmailVerified: true },
-            });
-          } else {
-            dispatch({ type: "SET_FIELD", field: "isPhoneVerified", value: true });
-          }
+          dispatch({
+            type: "SET_FIELDS",
+            fields: {
+              isPhoneVerified: true,
+              isEmailVerified: channel === "email",
+              email: channel === "email" ? verifiedIdentifier : state.email,
+              groupPhoneVerificationToken: verificationToken || "",
+              contactVerificationIdentifier: verifiedIdentifier || identifier,
+              contactVerificationChannel: channel || verificationMethod,
+              contactVerificationToken: verificationToken || "",
+            },
+          });
         }}
       />
     </div>

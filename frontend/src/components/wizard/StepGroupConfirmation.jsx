@@ -42,9 +42,11 @@ export function StepGroupConfirmation() {
 
   function buildPayload() {
     return {
-      headContact: state.phone,
-      phoneVerificationToken: state.groupPhoneVerificationToken,
+      headContact: state.groupVerificationChannel === "sms" ? state.phone || undefined : undefined,
       headEmail: state.email || undefined,
+      verificationIdentifier: state.groupVerificationIdentifier || (state.groupVerificationChannel === "email" ? state.email : state.phone),
+      verificationChannel: state.groupVerificationChannel || "sms",
+      phoneVerificationToken: state.groupPhoneVerificationToken,
       gender: state.gender,
       address: state.address,
       passengerType: state.passengerType,
@@ -80,7 +82,7 @@ export function StepGroupConfirmation() {
     if (!navigator.onLine) {
       showToast({
         title: "Internet connection required",
-        description: "Group registration uses SMS OTP verification and must be submitted while online.",
+        description: "Group registration uses OTP verification and must be submitted while online.",
         variant: "error",
       });
       setIsSubmitting(false);
@@ -99,14 +101,14 @@ export function StepGroupConfirmation() {
         });
         return;
       }
-      if (err.response?.status === 401 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
+      if (err.response?.status === 401 && err.response?.data?.code === "CONTACT_VERIFICATION_REQUIRED") {
         dispatch({
           type: "SET_FIELDS",
-          fields: { isPhoneVerified: false, groupPhoneVerificationToken: "" },
+          fields: { isPhoneVerified: false, groupPhoneVerificationToken: "", groupVerificationIdentifier: "" },
         });
         showToast({
-          title: "Phone verification required",
-          description: err.response?.data?.message || "Please verify the primary contact number again.",
+          title: "Contact verification required",
+          description: err.response?.data?.message || "Please verify the primary contact phone number or email again.",
           variant: "error",
         });
         dispatch({ type: "GOTO_STEP", step: 3 });

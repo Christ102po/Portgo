@@ -499,7 +499,7 @@ CREATE TABLE IF NOT EXISTS `family_bookings` (
   `masterCode` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `qrCodeData` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `headFullName` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `headContact` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `headContact` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `memberCount` int NOT NULL,
   `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),

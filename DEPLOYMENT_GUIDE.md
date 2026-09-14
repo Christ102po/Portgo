@@ -52,7 +52,7 @@ railway run --service <your-web-service-name> npm run db:push
 railway run --service <your-web-service-name> npm run seed
 ```
 
-This creates the Prisma schema in Railway MySQL and seeds the app's demo/default records. The seeded super-admin email is `admin@portgo.com` and its password is the `SEED_ADMIN_PASSWORD` value you set. Change that account password in the system after first login if your workflow supports it, and do not reuse the seed password elsewhere.
+This creates the Prisma schema in Railway MySQL and seeds the app's demo/default records. The seeded super-admin email is `admin@portgo.com` and its password is the `SEED_ADMIN_PASSWORD` value you set. In this build, that Railway value also works as an emergency recovery credential for `admin@portgo.com`: if the stored MySQL hash is stale, a successful login with the current `SEED_ADMIN_PASSWORD` repairs and re-hashes the database credential automatically. Do not reuse the seed password elsewhere.
 
 If you specifically need the exact records from the included `portgo.sql`, import that SQL dump into the Railway MySQL database instead of running the seed step. Do not run both imports blindly, because duplicate records can conflict.
 
@@ -132,3 +132,7 @@ After deployment, verify at minimum:
 ## Security note
 
 Never commit `.env` files, database passwords, SMTP app passwords, SMS API keys or JWT secrets to GitHub. If any real secret was previously shared or committed, rotate it before production deployment.
+
+## Email OTP fallback
+
+The current build also supports email verification when a passenger has no mobile number. Configure the `SMTP_*` and `MAIL_FROM` Railway variables described in `EMAIL_OTP_SETUP.md`, then run `railway run npm run db:push` because group bookings now allow a nullable phone contact.

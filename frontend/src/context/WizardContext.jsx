@@ -12,6 +12,11 @@ const initialState = {
   phone: "",
   isPhoneVerified: false,
   groupPhoneVerificationToken: "",
+  groupVerificationIdentifier: "",
+  groupVerificationChannel: "sms",
+  contactVerificationIdentifier: "",
+  contactVerificationChannel: "sms",
+  contactVerificationToken: "",
   fullName: "",
   gender: null,
   age: "",
@@ -80,9 +85,19 @@ function wizardReducer(state, action) {
       if (action.field === "phone" && action.value !== state.phone) {
         next.isPhoneVerified = false;
         next.groupPhoneVerificationToken = "";
+        next.groupVerificationIdentifier = "";
       }
       if (action.field === "email" && action.value !== state.email) {
         next.isEmailVerified = false;
+        if (state.contactVerificationChannel === "email") {
+          next.isPhoneVerified = false;
+          next.contactVerificationIdentifier = "";
+          next.contactVerificationToken = "";
+        }
+        if (state.groupVerificationChannel === "email") {
+          next.groupPhoneVerificationToken = "";
+          next.groupVerificationIdentifier = "";
+        }
       }
       return next;
     }

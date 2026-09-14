@@ -47,7 +47,7 @@ function verifyCode(identifier, code) {
   const key = normalizeIdentifier(identifier);
   const entry = store.get(key);
 
-  if (!entry) return { ok: false, message: "No code was requested for this number" };
+  if (!entry) return { ok: false, message: "No verification code was requested for this contact" };
 
   if (Date.now() > entry.expiresAt) {
     store.delete(key);

@@ -2,34 +2,76 @@ require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const prisma = require("./lib/prisma");
 
-const DEV_ADMIN_EMAIL = "admin@portgo.com";
-const DEV_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "admin123");
-const SEEDED_ADMIN_ID = "cmsrmot0e0000qcmcxze7b287";
+const DEFAULT_ADMIN_EMAIL = "admin@portgo.com";
 
-async function main() {
-  if (!DEV_ADMIN_PASSWORD) {
+function envValue(name) {
+  let value = String(process.env[name] || "").trim();
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+  return value;
+}
+
+const ADMIN_EMAIL = (envValue("SEED_ADMIN_EMAIL") || DEFAULT_ADMIN_EMAIL).toLowerCase();
+const ADMIN_PASSWORD =
+  envValue("SEED_ADMIN_PASSWORD") || (process.env.NODE_ENV === "production" ? "" : "admin123");
+
+async function seedAdmin() {
+  if (!ADMIN_PASSWORD) {
     throw new Error("SEED_ADMIN_PASSWORD is required when seeding in production.");
   }
-  const passwordHash = await bcrypt.hash(DEV_ADMIN_PASSWORD, 10);
 
-  const existingAdmin = await prisma.admin.findUnique({ where: { id: SEEDED_ADMIN_ID } });
-  if (existingAdmin) {
-    await prisma.admin.update({
-      where: { id: SEEDED_ADMIN_ID },
-      data: { email: DEV_ADMIN_EMAIL, passwordHash },
-    });
-  } else {
-    await prisma.admin.upsert({
-      where: { email: DEV_ADMIN_EMAIL },
-      update: { passwordHash },
-      create: {
-        fullName: "Port Administrator",
-        email: DEV_ADMIN_EMAIL,
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+  const adminByEmail = await prisma.admin.findUnique({ where: { email: ADMIN_EMAIL } });
+
+  if (adminByEmail) {
+    return prisma.admin.update({
+      where: { id: adminByEmail.id },
+      data: {
+        fullName: adminByEmail.fullName || "Port Administrator",
         passwordHash,
+        role: "SUPER_ADMIN",
+        active: true,
+      },
+    });
+  }
+
+  // Older PORTGO database dumps may contain a SUPER_ADMIN with a different id
+  // (or a previously changed email). Reuse it instead of creating duplicates.
+  const existingSuperAdmin = await prisma.admin.findFirst({
+    where: { role: "SUPER_ADMIN" },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (existingSuperAdmin) {
+    return prisma.admin.update({
+      where: { id: existingSuperAdmin.id },
+      data: {
+        email: ADMIN_EMAIL,
+        passwordHash,
+        active: true,
         role: "SUPER_ADMIN",
       },
     });
   }
+
+  return prisma.admin.create({
+    data: {
+      fullName: "Port Administrator",
+      email: ADMIN_EMAIL,
+      passwordHash,
+      role: "SUPER_ADMIN",
+      active: true,
+    },
+  });
+}
+
+async function main() {
+  await seedAdmin();
 
   const surigaoStar = await prisma.ship.upsert({
     where: { code: "SHIP-01" },
@@ -60,7 +102,8 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log(`Dev admin login -> email: ${DEV_ADMIN_EMAIL}  password: ${DEV_ADMIN_PASSWORD}`);
+  console.log(`Admin email: ${ADMIN_EMAIL}`);
+  console.log("Admin password synchronized from SEED_ADMIN_PASSWORD (password is not printed for security). ");
 }
 
 main()

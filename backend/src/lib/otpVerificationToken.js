@@ -27,20 +27,20 @@ function verifyOtpVerificationToken(token, expectedIdentifier) {
   try {
     const payload = jwt.verify(String(token || ""), secret());
     if (payload?.purpose !== PURPOSE) {
-      return { ok: false, message: "Invalid phone verification proof" };
+      return { ok: false, message: "Invalid contact verification proof" };
     }
 
     const expected = normalizeIdentifier(expectedIdentifier);
     if (payload.identifier !== expected) {
-      return { ok: false, message: "Phone verification does not match the registered contact number" };
+      return { ok: false, message: "Contact verification does not match the verified phone number or email address" };
     }
 
     return { ok: true, payload };
   } catch (error) {
     if (error?.name === "TokenExpiredError") {
-      return { ok: false, message: "Phone verification expired. Please verify the contact number again." };
+      return { ok: false, message: "Contact verification expired. Please verify your phone number or email address again." };
     }
-    return { ok: false, message: "Invalid or expired phone verification. Please verify the contact number again." };
+    return { ok: false, message: "Invalid or expired contact verification. Please verify your phone number or email address again." };
   }
 }
 

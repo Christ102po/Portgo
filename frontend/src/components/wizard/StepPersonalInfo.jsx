@@ -248,7 +248,8 @@ export function StepPersonalInfo() {
 
   const canContinue = isTourist
     ? state.fullName.trim() && state.nationality.trim() && state.passportNumber.trim() && touristPhoneValid
-    : state.fullName.trim() &&
+    : state.isPhoneVerified &&
+      state.fullName.trim() &&
       state.gender &&
       state.age.trim() &&
       Number(state.age) > 0 &&
@@ -392,6 +393,7 @@ export function StepPersonalInfo() {
                 type="email"
                 placeholder="juan.delacruz@email.com"
                 value={state.email}
+                readOnly={state.isEmailVerified}
                 onChange={(e) => setField("email", e.target.value)}
               />
               <p className="mt-1 text-xs text-slate-400">

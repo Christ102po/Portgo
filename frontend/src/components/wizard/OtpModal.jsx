@@ -9,11 +9,11 @@ import { cn } from "../../lib/cn";
 
 const INVALID_CODE_MESSAGE = "Invalid verification code. Please check your code and try again.";
 
-export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, cooldown = 0, onResend, allowEmailFallback = true }) {
+export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, cooldown = 0, onResend, allowEmailFallback = true, initialChannel = "sms" }) {
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
-  const [channel, setChannel] = useState("sms");
+  const [channel, setChannel] = useState(initialChannel);
   const [identifier, setIdentifier] = useState(phone);
   const [emailInput, setEmailInput] = useState(defaultEmail || "");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -24,11 +24,12 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
     if (open) {
       setCode("");
       setError("");
-      setChannel("sms");
+      setChannel(initialChannel);
       setIdentifier(phone);
-      setEmailSent(false);
+      setEmailInput(defaultEmail || "");
+      setEmailSent(initialChannel === "email");
     }
-  }, [open, phone]);
+  }, [open, phone, initialChannel, defaultEmail]);
 
   function handleCodeChange(e) {
     setCode(e.target.value.replace(/\D/g, ""));
@@ -92,7 +93,7 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
           <DialogDescription className="mt-1 pr-2 text-emerald-50/90">
           {channel === "sms" ? (
             <>
-              We sent a 6-digit code via SMS to <span className="font-semibold text-white">{phone}</span>.
+              We sent a 6-digit code via SMS to <span className="font-semibold text-white">{identifier}</span>.
             </>
           ) : emailSent ? (
             <>
@@ -172,7 +173,7 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
             <Button type="submit" variant="kiosk" className="h-auto w-full rounded-2xl px-8 py-3.5" size="lg" disabled={code.length !== 6 || isVerifying}>
               {isVerifying ? "Verifying..." : "Verify Code"}
             </Button>
-            {channel === "sms" && onResend && (
+            {onResend && (
               <p className="text-center text-xs text-slate-400">
                 Didn&apos;t get a code?{" "}
                 {cooldown > 0 ? (

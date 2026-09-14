@@ -25,7 +25,7 @@ function LanguageSwitcher() {
           title={l.label}
           className={cn(
             "rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
-            lang === l.code ? "bg-mint text-graphite" : "text-white/50 hover:text-white/80"
+            lang === l.code ? "bg-emerald-300 text-emerald-950" : "text-white/50 hover:text-white/80"
           )}
         >
           {l.code}
@@ -88,7 +88,7 @@ export function KioskTerminalHeader() {
   const timeStr = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
 
   return (
-    <div className="flex flex-col gap-2 border-b border-emerald-400/20 bg-slate-900 px-4 py-2.5 text-white shadow-[0_1px_20px_-4px_rgba(15,23,42,0.35)] sm:px-8 min-[760px]:flex-row min-[760px]:items-center min-[760px]:justify-between print:hidden">
+    <div className="flex flex-col gap-2 border-b border-emerald-400/20 bg-[#073f32] px-4 py-2.5 text-white shadow-[0_1px_20px_-4px_rgba(15,23,42,0.35)] sm:px-8 min-[760px]:flex-row min-[760px]:items-center min-[760px]:justify-between print:hidden">
       <div className="flex min-w-0 items-center gap-2">
         <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
         <p className="truncate text-[11px] font-bold uppercase tracking-wider text-white sm:text-xs">

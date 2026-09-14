@@ -80,7 +80,6 @@ export function StepConfirmation() {
           }
         : {
             contactNumber: state.phone,
-            phoneVerificationToken: state.phoneVerificationToken || undefined,
             gender: state.gender,
             age: state.age ? Number(state.age) : undefined,
             address: state.address,
@@ -125,19 +124,6 @@ export function StepConfirmation() {
         });
         return;
       }
-      if (err.response?.status === 403 && err.response?.data?.code === "PHONE_VERIFICATION_REQUIRED") {
-        showToast({
-          title: "Verify your phone again",
-          description: err.response?.data?.message || "Your phone verification expired or no longer matches this number.",
-          variant: "error",
-        });
-        dispatch({
-          type: "SET_FIELDS",
-          fields: { isPhoneVerified: false, phoneVerificationToken: null },
-        });
-        dispatch({ type: "GOTO_STEP", step: 2 });
-        return;
-      }
       if (err.response?.status === 409 && err.response?.data?.code === "DUPLICATE_REGISTRATION") {
         showToast({
           title: "Duplicate Registration Detected",
@@ -179,14 +165,14 @@ export function StepConfirmation() {
 
   return (
     <div>
-      <h2 className="mb-1 text-center text-xl font-semibold text-slate-900">
-        Review &amp; Confirm
-      </h2>
-      <p className="mb-6 text-center text-sm text-slate-500">
-        Please double-check your details before submitting.
-      </p>
+      <h2 className="section-title">Review &amp; Confirm</h2>
+      <p className="section-subtitle mb-6">Please double-check your details before submitting.</p>
 
-      <Card className="mx-auto max-w-4xl border-slate-200/80 shadow-sm">
+      <Card className="mx-auto max-w-4xl overflow-hidden border-emerald-100 shadow-[0_22px_50px_-32px_rgba(6,78,59,0.65)]">
+        <div className="bg-gradient-to-r from-emerald-700 to-green-600 px-5 py-5 text-white sm:px-6">
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-100">Ticket details</p>
+          <p className="mt-1 text-lg font-black">Passenger & trip summary</p>
+        </div>
         <CardContent className="pt-6">
           <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-4">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">

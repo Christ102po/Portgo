@@ -58,8 +58,8 @@ export function StepPassengerType() {
               className={cn(
                 "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all duration-300",
                 selected
-                  ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-md shadow-emerald-900/10 ring-1 ring-emerald-500"
+                  : "text-slate-500 hover:bg-white hover:text-emerald-800"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -97,22 +97,22 @@ export function StepPassengerType() {
               <div
                 className={cn(
                   "flex h-full min-h-[142px] flex-row items-center gap-4 rounded-[20px] bg-white p-4 transition-colors duration-300 sm:min-h-[190px] sm:flex-col sm:items-start sm:p-5",
-                  selected && "bg-emerald-50/50"
+                  selected && "bg-gradient-to-br from-emerald-500 to-green-700"
                 )}
               >
                 <div
                   className={cn(
                     "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl transition-all duration-300 sm:mb-2 sm:h-16 sm:w-16",
                     selected
-                      ? "scale-105 bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
-                      : "bg-slate-100 text-slate-600 group-hover:scale-105 group-hover:bg-emerald-50 group-hover:text-emerald-500"
+                      ? "scale-105 bg-white/15 text-white shadow-md ring-1 ring-white/25"
+                      : "bg-emerald-50 text-emerald-700 group-hover:scale-105 group-hover:bg-emerald-600 group-hover:text-white"
                   )}
                 >
                   <Icon className="h-8 w-8" />
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-slate-900">{t(opt.key)}</p>
-                  <p className="mt-0.5 text-sm text-slate-500">{t(`${opt.key}Description`)}</p>
+                  <p className={cn("text-lg font-black", selected ? "text-white" : "text-slate-900")}>{t(opt.key)}</p>
+                  <p className={cn("mt-0.5 text-sm", selected ? "text-emerald-50/90" : "text-slate-500")}>{t(`${opt.key}Description`)}</p>
                 </div>
               </div>
               {selected && (
@@ -126,7 +126,7 @@ export function StepPassengerType() {
       </div>
 
       {touristExpanded && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-6 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
           <p className="mb-3 text-center text-sm font-semibold text-slate-700">
             Are you a Philippine Tourist (Domestic) or a Foreign Tourist?
           </p>

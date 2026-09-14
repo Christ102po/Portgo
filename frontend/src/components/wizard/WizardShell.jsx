@@ -137,20 +137,20 @@ export function WizardShell() {
   });
 
   return (
-    <div className="mobile-screen">
+    <div className="mobile-screen portgo-booking-shell">
       <div className="sticky top-0 z-30 print:hidden">
         <KioskTerminalHeader />
-        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-slate-950/95 px-3 py-3 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.9)] backdrop-blur-xl sm:px-8 sm:py-3.5">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-[#0b5b43]/95 px-3 py-3 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.9)] backdrop-blur-xl sm:px-8 sm:py-3.5">
           <div className="flex items-center gap-3.5">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center sm:h-14 sm:w-14">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 via-teal-400 to-teal-600 shadow-[0_0_26px_-4px_rgba(45,212,191,0.75)]" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-300 via-emerald-400 to-green-600 shadow-[0_0_26px_-4px_rgba(45,212,191,0.75)]" />
               <div className="absolute inset-[3px] rounded-full border-2 border-dashed border-white/50" />
-              <div className="absolute inset-[7px] rounded-full bg-slate-950 ring-1 ring-white/20" />
-              <Anchor className="relative h-5 w-5 text-teal-300 sm:h-6 sm:w-6" />
+              <div className="absolute inset-[7px] rounded-full bg-[#073f32] ring-1 ring-white/20" />
+              <Anchor className="relative h-5 w-5 text-emerald-200 sm:h-6 sm:w-6" />
             </div>
             <div className="leading-tight">
               <span className="block text-base font-black tracking-[-0.03em] text-white sm:text-xl">PORTGO</span>
-              <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-teal-300/80 sm:block">
+              <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-emerald-200/80 sm:block">
                 Official PPA Passenger Terminal
               </span>
             </div>
@@ -169,8 +169,8 @@ export function WizardShell() {
 
       {isLanding && <PortStatusBanner />}
 
-      <div className={cn("mx-auto flex w-full flex-col bg-transparent px-3 pb-5 pt-4 sm:px-5 sm:py-6", isWideStep ? "max-w-6xl" : "max-w-4xl")}>
-        <header className="mb-4 text-center print:hidden sm:mb-6">
+      <div className={cn("portgo-content mx-auto flex w-full flex-col bg-transparent px-3 pb-5 pt-4 sm:px-5 sm:py-6", isWideStep ? "max-w-6xl" : "max-w-4xl")}>
+        <header className="portgo-page-intro mb-4 text-center print:hidden sm:mb-6">
           <div className="mx-auto mb-3 inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-700 sm:hidden">Passenger Services</div>
           <h1 className="text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
             {t("pageTitle")}

@@ -134,12 +134,16 @@ export function StepGroupConfirmation() {
 
   return (
     <div>
-      <h2 className="mb-1 text-center text-xl font-semibold text-slate-900">Review &amp; Confirm Group</h2>
+      <h2 className="section-title">Review &amp; Confirm Group</h2>
       <p className="mb-8 text-center text-sm text-slate-500">
         Please double-check your group&apos;s details before submitting.
       </p>
 
-      <Card className="mx-auto max-w-xl border-slate-200/80 shadow-sm">
+      <Card className="mx-auto max-w-2xl overflow-hidden border-emerald-100 shadow-[0_22px_50px_-32px_rgba(6,78,59,0.65)]">
+        <div className="bg-gradient-to-r from-emerald-700 to-green-600 px-5 py-5 text-white sm:px-6">
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-100">Group ticket details</p>
+          <p className="mt-1 text-lg font-black">Travelers & trip summary</p>
+        </div>
         <CardContent className="pt-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Group Summary</span>

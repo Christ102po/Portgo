@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, ChevronLeft, Phone, Plus, Trash2, UsersRound, XCircle } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Input } from "../ui/Input";
@@ -39,6 +39,8 @@ export function StepGroupMembers() {
   const [isSending, setIsSending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [codeSent, setCodeSent] = useState(false);
+  const lastAutoPhoneRef = useRef("");
   const { showToast } = useToast();
   const isTourist = state.passengerType === "FOREIGN_TOURIST";
 
@@ -74,10 +76,11 @@ export function StepGroupMembers() {
   }
 
   async function handleSendCode() {
-    if (!phoneIsValid || cooldown > 0) return;
+    if (!phoneIsValid || cooldown > 0 || isSending) return;
     setIsSending(true);
     try {
       const res = await apiClient.post("/otp/send", { phone: state.phone });
+      setCodeSent(true);
       setModalOpen(true);
       setCooldown(60);
       showToast({
@@ -86,6 +89,7 @@ export function StepGroupMembers() {
         variant: "info",
       });
     } catch (err) {
+      setCodeSent(false);
       const fieldMessage = err.response?.data?.details?.fieldErrors?.phone?.[0];
       showToast({
         title: "Failed to send code",
@@ -96,6 +100,29 @@ export function StepGroupMembers() {
       setIsSending(false);
     }
   }
+
+  // Automatically send the OTP once a complete valid PH mobile number is entered.
+  // This replaces the old Send OTP button and is guarded so a render cannot
+  // trigger duplicate SMS messages.
+  useEffect(() => {
+    const normalized = phoneDigits(state.phone);
+
+    if (!phoneIsValid) {
+      lastAutoPhoneRef.current = "";
+      setCodeSent(false);
+      return;
+    }
+    if (state.isPhoneVerified || isSending || cooldown > 0) return;
+    if (lastAutoPhoneRef.current === normalized) return;
+
+    const timer = window.setTimeout(() => {
+      lastAutoPhoneRef.current = normalized;
+      handleSendCode();
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phone, phoneIsValid, state.isPhoneVerified, isSending, cooldown]);
 
   const headValid =
     state.fullName.trim() &&
@@ -111,12 +138,13 @@ export function StepGroupMembers() {
 
   return (
     <div>
-      <h2 className="mb-1 text-center text-xl font-semibold text-slate-900">Group / Dependents</h2>
+      <h2 className="section-title">Group / Dependents</h2>
       <p className="mb-6 text-center text-sm text-slate-500 sm:mb-8">
         Enter the primary contact&apos;s details, verify their phone by SMS, then add each traveler in the group.
       </p>
 
-      <Card className="mx-auto max-w-xl border-slate-200/80 shadow-sm">
+      <Card className="mx-auto max-w-2xl overflow-hidden border-emerald-100 shadow-[0_22px_50px_-32px_rgba(6,78,59,0.65)]">
+        <div className="bg-gradient-to-r from-emerald-700 to-green-600 px-5 py-5 text-white sm:px-6"><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-100">Group registration</p><p className="mt-1 text-lg font-black">Primary contact & travelers</p></div>
         <CardContent className="space-y-4 pt-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Primary Contact / Head of Group
@@ -134,35 +162,22 @@ export function StepGroupMembers() {
 
             <div className="md:col-span-2">
               <Label htmlFor="groupHeadContact">Contact Number</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative min-w-0 flex-1">
-                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    id="groupHeadContact"
-                    className="pl-9"
-                    placeholder="0917-123-4567"
-                    inputMode="numeric"
-                    maxLength={13}
-                    value={state.phone}
-                    onChange={(e) => setField("phone", formatPhonePH(e.target.value))}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={handleSendCode}
-                  disabled={isSending || !phoneIsValid || cooldown > 0}
-                >
-                  {isSending
-                    ? "Sending..."
-                    : cooldown > 0
-                    ? `Resend in ${cooldown}s`
-                    : state.isPhoneVerified
-                    ? "Resend OTP"
-                    : "Send OTP"}
-                </Button>
+              <div className="relative min-w-0">
+                <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                <Input
+                  id="groupHeadContact"
+                  className="h-14 rounded-2xl border-emerald-100 bg-emerald-50/45 pl-10 text-base font-bold tracking-wide focus:border-emerald-500 focus:bg-white"
+                  placeholder="0917-123-4567"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={13}
+                  value={state.phone}
+                  onChange={(e) => setField("phone", formatPhonePH(e.target.value))}
+                />
               </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                OTP sends automatically as soon as the contact number is complete and valid.
+              </p>
 
               {state.phone && !phoneIsValid && hasInvalidPrefix && (
                 <div className="mt-2 flex items-center gap-2 rounded-lg border-2 border-red-200 bg-red-50 px-3 py-2">
@@ -172,6 +187,22 @@ export function StepGroupMembers() {
               )}
               {state.phone && !phoneIsValid && !hasInvalidPrefix && (
                 <p className="mt-2 text-xs text-red-600">Enter a valid PH mobile number (e.g. 0917-123-4567)</p>
+              )}
+              {isSending && (
+                <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800">
+                  <Phone className="h-4 w-4 animate-pulse" />
+                  Number complete — sending the OTP automatically...
+                </div>
+              )}
+              {!isSending && codeSent && !state.isPhoneVerified && (
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-left text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                >
+                  <span>Code sent to {state.phone}. Tap to enter the OTP.</span>
+                  <span className="text-xs text-emerald-600">Open</span>
+                </button>
               )}
               {state.isPhoneVerified && state.groupPhoneVerificationToken && (
                 <div className="mt-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
@@ -334,6 +365,7 @@ export function StepGroupMembers() {
         onResend={handleSendCode}
         allowEmailFallback={false}
         onVerified={({ verificationToken } = {}) => {
+          setCodeSent(false);
           dispatch({
             type: "SET_FIELDS",
             fields: {

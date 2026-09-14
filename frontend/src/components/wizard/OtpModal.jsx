@@ -81,25 +81,30 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogTitle className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-mint-dark" />
-          Enter Verification Code
-        </DialogTitle>
-        <DialogDescription>
+      <DialogContent className="overflow-hidden rounded-[28px] border-emerald-100 p-0 shadow-[0_28px_70px_-30px_rgba(6,78,59,0.7)]">
+        <div className="bg-gradient-to-br from-emerald-700 to-green-600 px-5 pb-5 pt-6 text-white sm:px-6">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <DialogTitle className="flex items-center gap-2 pr-10 text-xl font-black text-white">
+            Enter Verification Code
+          </DialogTitle>
+          <DialogDescription className="mt-1 pr-2 text-emerald-50/90">
           {channel === "sms" ? (
             <>
-              We sent a 6-digit code via SMS to <span className="font-medium text-ink">{phone}</span>.
+              We sent a 6-digit code via SMS to <span className="font-semibold text-white">{phone}</span>.
             </>
           ) : emailSent ? (
             <>
-              We sent a 6-digit code to <span className="font-medium text-ink">{identifier}</span>.
+              We sent a 6-digit code to <span className="font-semibold text-white">{identifier}</span>.
             </>
           ) : (
             "Enter your email address to receive a verification code instead."
           )}
-        </DialogDescription>
+          </DialogDescription>
+        </div>
 
+        <div className="px-5 pb-6 pt-5 sm:px-6">
         {allowEmailFallback && (
           <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
             <button
@@ -158,13 +163,13 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
                 value={code}
                 onChange={handleCodeChange}
                 className={cn(
-                  "text-center text-lg tracking-[0.4em]",
+                  "h-14 rounded-2xl border-emerald-200 bg-emerald-50/50 text-center text-xl font-black tracking-[0.42em] focus:bg-white",
                   error && "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                 )}
               />
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
-            <Button type="submit" variant="kiosk" className="h-auto w-full px-8 py-3.5 rounded-xl" size="lg" disabled={code.length !== 6 || isVerifying}>
+            <Button type="submit" variant="kiosk" className="h-auto w-full rounded-2xl px-8 py-3.5" size="lg" disabled={code.length !== 6 || isVerifying}>
               {isVerifying ? "Verifying..." : "Verify Code"}
             </Button>
             {channel === "sms" && onResend && (
@@ -185,6 +190,7 @@ export function OtpModal({ open, onOpenChange, phone, defaultEmail, onVerified, 
             )}
           </form>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

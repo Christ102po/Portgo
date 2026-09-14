@@ -21,7 +21,7 @@ const CLASS_ICONS = {
 
 function AccommodationClassSelector({ classAvailability, value, onSelect }) {
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Type of Accommodation / Seat Class <span className="text-red-500">*</span>
       </p>
@@ -39,16 +39,16 @@ function AccommodationClassSelector({ classAvailability, value, onSelect }) {
               onClick={() => onSelect(meta.value)}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-lg border-2 px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300"
+                selected ? "border-emerald-500 bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-md" : "border-emerald-100 bg-white hover:border-emerald-300 hover:bg-emerald-50"
               )}
             >
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+              <span className={cn("flex items-center gap-1.5 text-xs font-semibold", selected ? "text-white" : "text-slate-900")}>
                 <Icon className="h-3.5 w-3.5" />
                 {meta.label}
               </span>
-              <span className="text-[11px] text-slate-500">{meta.subtitle}</span>
+              <span className={cn("text-[11px]", selected ? "text-emerald-50/90" : "text-slate-500")}>{meta.subtitle}</span>
               {availability?.capacity != null && (
-                <span className={cn("text-[11px] font-medium", isFull ? "text-red-600" : "text-slate-500")}>
+                <span className={cn("text-[11px] font-medium", isFull ? "text-red-600" : selected ? "text-emerald-50" : "text-slate-500")}>
                   {isFull ? "Full" : `${availability.seatsLeft} of ${availability.capacity} seats left`}
                 </span>
               )}
@@ -160,14 +160,16 @@ export function StepTripDetails() {
 
   return (
     <div>
-      <h2 className="mb-1 text-center text-xl font-semibold text-slate-900">
-        Trip Selection
-      </h2>
-      <p className="mb-8 text-center text-sm text-slate-500">
-        Select the vessel and departure schedule you&apos;ll be boarding.
+      <h2 className="section-title">Trip Selection</h2>
+      <p className="section-subtitle mb-6">
+        Select the vessel, schedule, and accommodation for your trip.
       </p>
 
-      <Card className="mx-auto max-w-xl border-slate-200/80 shadow-sm">
+      <Card className="mx-auto max-w-2xl overflow-hidden border-emerald-100 shadow-[0_22px_50px_-32px_rgba(6,78,59,0.65)]">
+        <div className="bg-gradient-to-r from-emerald-700 to-green-600 px-5 py-5 text-white sm:px-6">
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-100">PORTGO sailing</p>
+          <p className="mt-1 text-lg font-black">Choose your trip</p>
+        </div>
         <CardContent className="grid grid-cols-1 gap-5 pt-6 sm:grid-cols-2">
           <div>
             <Label>Ship / Vessel</Label>

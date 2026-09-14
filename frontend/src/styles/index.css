@@ -156,3 +156,127 @@ textarea {
     print-color-adjust: exact;
   }
 }
+
+/* --------------------------------------------------------------------------
+   PORTGO green travel-app theme
+   Inspired by modern mobile booking UIs while remaining fully responsive.
+   -------------------------------------------------------------------------- */
+:root {
+  --portgo-green-950: #063d2d;
+  --portgo-green-900: #07513a;
+  --portgo-green-800: #0b6b4c;
+  --portgo-green-700: #0f8a5f;
+  --portgo-green-600: #16a36f;
+  --portgo-green-500: #22c982;
+  --portgo-mint-100: #dff7ea;
+  --portgo-mint-50: #f0fbf5;
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -8%, rgba(34, 201, 130, 0.22), transparent 30rem),
+    radial-gradient(circle at 88% 4%, rgba(16, 163, 111, 0.14), transparent 28rem),
+    linear-gradient(180deg, #edf9f2 0%, #f8fcfa 52%, #e8f6ee 100%);
+}
+
+@layer components {
+  .portgo-booking-shell {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(52, 211, 153, 0.24), transparent 27rem),
+      linear-gradient(180deg, rgba(240, 253, 244, 0.92), rgba(248, 252, 250, 0.98));
+  }
+
+  .portgo-booking-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.55;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(22, 163, 111, 0.07) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 76% 62%, rgba(6, 61, 45, 0.055) 0 1px, transparent 1.8px);
+    background-size: 34px 34px, 44px 44px;
+  }
+
+  .portgo-content {
+    position: relative;
+  }
+
+  .portgo-page-intro {
+    @apply mx-auto w-full max-w-3xl rounded-[26px] border border-emerald-100/80 bg-white/80 px-4 py-4 shadow-[0_18px_46px_-34px_rgba(6,78,59,0.6)] backdrop-blur-xl sm:px-6 sm:py-5;
+  }
+
+  .portgo-booking-shell .app-surface {
+    @apply rounded-[30px] border border-emerald-100/90 bg-white shadow-[0_24px_70px_-38px_rgba(6,78,59,0.62)];
+  }
+
+  .portgo-booking-shell .section-title {
+    @apply text-[1.45rem] font-black tracking-[-0.035em] text-emerald-950 sm:text-[1.7rem];
+  }
+
+  .portgo-booking-shell .section-subtitle {
+    @apply max-w-xl text-slate-500;
+  }
+
+  .portgo-booking-shell input:not([type="checkbox"]):not([type="radio"]),
+  .portgo-booking-shell textarea {
+    border-color: rgba(167, 243, 208, 0.9);
+    background-color: rgba(240, 253, 244, 0.62);
+  }
+
+  .portgo-booking-shell input:not([type="checkbox"]):not([type="radio"]):focus,
+  .portgo-booking-shell textarea:focus {
+    border-color: #10b981;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.11);
+  }
+
+  .portgo-booking-shell .mobile-action-bar {
+    @apply border-emerald-100;
+  }
+
+  .portgo-booking-shell .mobile-action-bar > button:last-child {
+    @apply rounded-2xl;
+  }
+}
+
+@media (max-width: 639px) {
+  .portgo-page-intro {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .portgo-booking-shell .app-surface {
+    border-radius: 26px;
+    padding: 1rem;
+  }
+
+  .portgo-booking-shell .mobile-action-bar {
+    position: sticky;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    z-index: 20;
+    margin-left: -0.3rem;
+    margin-right: -0.3rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(167, 243, 208, 0.92);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 44px -24px rgba(6, 78, 59, 0.55);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .portgo-content {
+    padding-top: 2rem;
+    padding-bottom: 2.25rem;
+  }
+
+  .portgo-booking-shell .app-surface {
+    padding: 2rem;
+  }
+}

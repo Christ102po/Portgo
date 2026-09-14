@@ -7,6 +7,7 @@ import { ConnectivityBadge } from "../ConnectivityBadge";
 import { Switch } from "../ui/Switch";
 import { cn } from "../../lib/cn";
 import { isForcedOffline, setForcedOffline, subscribeForcedOffline } from "../../lib/offlineSimulation";
+import { ApkDownloadButton } from "../ApkDownloadButton";
 
 const TITLES = {
   "/admin": "Dashboard",
@@ -54,6 +55,7 @@ function ToolbarControls({ now, compact = false }) {
       <WeatherAdvisoryControl />
       <OfflineModeToggle />
       <ConnectivityBadge />
+      <ApkDownloadButton compact />
       {!compact && (
         <span className="hidden shrink-0 text-xs font-medium text-slate-500 xl:inline">
           {now.toLocaleString(undefined, {

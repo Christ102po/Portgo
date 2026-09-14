@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PORTGO</string>
+    <string name="title_activity_main">PORTGO</string>
+    <string name="package_name">com.portgo.app</string>
+    <string name="custom_url_scheme">com.portgo.app</string>
+</resources>

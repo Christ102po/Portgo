@@ -132,11 +132,7 @@ async function create(req, res) {
             masterCode,
             qrCodeData: masterQrCodeData,
             headFullName,
-            // Keep an empty string as a legacy fallback for older Railway databases
-            // where headContact was created NOT NULL. The startup compatibility check
-            // upgrades that column to nullable, but this also lets email-only groups
-            // submit safely if ALTER TABLE is temporarily unavailable.
-            headContact: headContact || "",
+            headContact: headContact || null,
             memberCount: members.length,
           },
         });

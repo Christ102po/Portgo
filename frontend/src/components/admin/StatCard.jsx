@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
 
 const ACCENT_COLORS = {
@@ -39,14 +39,22 @@ export function StatCard({
   sublabel,
   changePct,
   trendLabel,
+  onClick,
+  actionLabel = "View details",
 }) {
   const colors = ACCENT_COLORS[accent ? "green" : accentColor] || null;
+  const CardTag = onClick ? "button" : "div";
 
   return (
-    <div
+    <CardTag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      aria-label={onClick ? `${label}: ${value}. ${actionLabel}` : undefined}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md",
-        colors && cn("border-t-4", colors.border)
+        "group relative w-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md",
+        colors && cn("border-t-4", colors.border),
+        onClick &&
+          "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:translate-y-0"
       )}
     >
       <div className="relative flex items-center justify-between">
@@ -76,6 +84,12 @@ export function StatCard({
           {trendLabel && <span className="ml-1 text-slate-300">&middot; {trendLabel}</span>}
         </p>
       )}
-    </div>
+      {onClick && (
+        <div className="relative mt-3 flex items-center gap-1 text-xs font-bold text-emerald-700 opacity-80 transition-all group-hover:gap-2 group-hover:opacity-100">
+          <span>{actionLabel}</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </div>
+      )}
+    </CardTag>
   );
 }

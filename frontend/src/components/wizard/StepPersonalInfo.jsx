@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Percent, Check, UserSearch, Loader2, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Percent, Check, UserSearch, Loader2, ShieldAlert, Plus, Trash2, UsersRound, QrCode } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
@@ -23,6 +23,20 @@ const GENDER_OPTIONS = [
   { value: "FEMALE", label: "Female" },
   { value: "OTHER", label: "Other" },
 ];
+
+
+const EMPTY_MEMBER = {
+  fullName: "",
+  age: "",
+  gender: "MALE",
+  isSeniorCitizen: false,
+  isPWD: false,
+  isPregnant: false,
+  needsWheelchair: false,
+  isStudent: false,
+  isInfant: false,
+  isMedicalEmergency: false,
+};
 
 // Mutually exclusive — a passenger is one category at a time. "Regular"
 // isn't a stored flag, it's just what's shown when none of the other three
@@ -228,6 +242,43 @@ export function StepPersonalInfo() {
     dispatch({ type: "SET_FIELD", field, value });
   }
 
+  function addMember() {
+    if (state.groupMembers.length >= 20) return;
+    setField("groupMembers", [...state.groupMembers, { ...EMPTY_MEMBER }]);
+  }
+
+  function removeMember(index) {
+    setField("groupMembers", state.groupMembers.filter((_, i) => i !== index));
+  }
+
+  function updateMember(index, patch) {
+    setField(
+      "groupMembers",
+      state.groupMembers.map((member, i) => (i === index ? { ...member, ...patch } : member))
+    );
+  }
+
+  function updateMemberAge(index, value) {
+    const numericAge = Number(value);
+    const patch = { age: value };
+    if (value.trim() && !Number.isNaN(numericAge)) {
+      patch.isSeniorCitizen = numericAge >= 60;
+      if (numericAge >= 60) {
+        patch.isStudent = false;
+        patch.isPWD = false;
+      }
+    }
+    updateMember(index, patch);
+  }
+
+  function updateMemberCategory(index, value) {
+    updateMember(index, {
+      isStudent: value === "STUDENT",
+      isSeniorCitizen: value === "SENIOR",
+      isPWD: value === "PWD",
+    });
+  }
+
   // Smart auto-check: age >= 60 automatically switches Passenger Category
   // to Senior Citizen (clearing Student/PWD, since the category is single-
   // select), and clears it again if the age is corrected below 60 — so
@@ -246,7 +297,11 @@ export function StepPersonalInfo() {
     dispatch({ type: "SET_FIELDS", fields });
   }
 
-  const canContinue = isTourist
+  const membersValid = state.groupMembers.every(
+    (member) => member.fullName.trim() && member.gender && String(member.age).trim() && Number(member.age) >= 0
+  );
+
+  const primaryValid = isTourist
     ? state.fullName.trim() && state.nationality.trim() && state.passportNumber.trim() && touristPhoneValid
     : state.isPhoneVerified &&
       state.fullName.trim() &&
@@ -254,6 +309,8 @@ export function StepPersonalInfo() {
       state.age.trim() &&
       Number(state.age) > 0 &&
       state.address.trim();
+
+  const canContinue = primaryValid && membersValid;
 
   return (
     <div>
@@ -451,6 +508,84 @@ export function StepPersonalInfo() {
               </span>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mx-auto mt-5 max-w-5xl overflow-hidden border-emerald-100 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-emerald-100 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white">
+              <UsersRound className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-black text-emerald-950">Accompanying Members <span className="font-semibold text-emerald-700/60">(Optional)</span></p>
+              <p className="mt-0.5 text-xs leading-5 text-emerald-800/70">Add anyone traveling under the primary passenger. These members are recorded in the admin system but do not receive their own QR code.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" className="shrink-0 border-emerald-200 text-emerald-800" onClick={addMember} disabled={state.groupMembers.length >= 20}>
+            <Plus className="h-4 w-4" /> {state.groupMembers.length >= 20 ? "Member Limit Reached" : "Add Member"}
+          </Button>
+        </div>
+
+        <CardContent className="p-4 sm:p-6">
+          {state.groupMembers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center">
+              <QrCode className="h-8 w-8 text-slate-300" />
+              <p className="mt-2 text-sm font-bold text-slate-700">Registering only the primary passenger</p>
+              <p className="mt-1 max-w-md text-xs leading-5 text-slate-400">You can continue without adding anyone. If you add members, one shared QR will belong to the primary passenger and cover the whole registration.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {state.groupMembers.map((member, index) => {
+                const memberCategory = member.isStudent ? "STUDENT" : member.isSeniorCitizen ? "SENIOR" : member.isPWD ? "PWD" : "REGULAR";
+                return (
+                  <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">Member {index + 1}</p>
+                        <p className="text-[11px] text-slate-400">No separate QR code will be generated</p>
+                      </div>
+                      <button type="button" onClick={() => removeMember(index)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600" aria-label={`Remove member ${index + 1}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="sm:col-span-2">
+                        <Label>Full Name</Label>
+                        <Input placeholder="Member full name" value={member.fullName} onChange={(e) => updateMember(index, { fullName: toTitleCase(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label>Age</Label>
+                        <Input type="number" min="0" max="130" placeholder="Age" value={member.age} onChange={(e) => updateMemberAge(index, e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Gender</Label>
+                        <Select value={member.gender} onValueChange={(value) => updateMember(index, { gender: value })} options={GENDER_OPTIONS} />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label>Passenger Category</Label>
+                        <Select value={memberCategory} onValueChange={(value) => updateMemberCategory(index, value)} options={CATEGORY_OPTIONS} />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label>Special Assistance</Label>
+                        <PriorityCheckboxes
+                          theme="light"
+                          compact
+                          values={member}
+                          options={ACCESSIBILITY_FLAG_OPTIONS}
+                          onChange={(next) => updateMember(index, next)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">
+                <strong>{1 + state.groupMembers.length} travelers total.</strong> The primary passenger will be the QR holder. Accompanying members stay recorded in the manifest and admin records after this kiosk session is cleared.
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

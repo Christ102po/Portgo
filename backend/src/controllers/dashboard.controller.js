@@ -9,6 +9,51 @@ function pctChange(current, previous) {
   return Math.round(((current - previous) / previous) * 100);
 }
 
+function todayWindow() {
+  const start = startOfDay(new Date());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+function tripDetailRow(trip) {
+  return {
+    id: trip.id,
+    kind: "trip",
+    fullName: trip.passenger?.fullName || "Unknown passenger",
+    passengerType: trip.passenger?.passengerType || null,
+    contact: trip.passenger?.contactNumber || trip.passenger?.email || trip.passenger?.passportNumber || "—",
+    email: trip.passenger?.email || null,
+    passNumber: trip.passNumber || null,
+    transactionType: trip.transactionType || null,
+    shipName: trip.ship?.name || null,
+    route: trip.schedule?.route || null,
+    departureTime: trip.schedule?.departureTime || null,
+    status: trip.status || null,
+    createdAt: trip.createdAt,
+    detailLabel: null,
+  };
+}
+
+function passengerDetailRow(passenger, detailLabel) {
+  return {
+    id: passenger.id,
+    kind: "passenger",
+    fullName: passenger.fullName || "Unknown passenger",
+    passengerType: passenger.passengerType || null,
+    contact: passenger.contactNumber || passenger.email || passenger.passportNumber || "—",
+    email: passenger.email || null,
+    passNumber: null,
+    transactionType: null,
+    shipName: null,
+    route: null,
+    departureTime: null,
+    status: null,
+    createdAt: passenger.createdAt,
+    detailLabel,
+  };
+}
+
 async function getStats(req, res) {
   const todayStart = startOfDay(new Date());
   const yesterdayStart = new Date(todayStart);
@@ -70,4 +115,69 @@ async function getStats(req, res) {
   });
 }
 
-module.exports = { getStats };
+async function getDetails(req, res) {
+  const type = String(req.query.type || "").trim();
+  const { start, end } = todayWindow();
+  const createdToday = { gte: start, lt: end };
+  const take = 200;
+
+  const tripTypes = {
+    totalToday: { createdAt: createdToday },
+    signInToday: { createdAt: createdToday, transactionType: "SIGN_IN" },
+    signOutToday: { createdAt: createdToday, transactionType: "SIGN_OUT" },
+    boardedCount: { createdAt: createdToday, status: "BOARDED" },
+    cancelledCount: { createdAt: createdToday, status: "CANCELLED" },
+    noShowCount: { createdAt: createdToday, status: "NO_SHOW" },
+  };
+
+  if (tripTypes[type]) {
+    const where = tripTypes[type];
+    const [rows, total] = await Promise.all([
+      prisma.trip.findMany({
+        where,
+        include: { passenger: true, ship: true, schedule: true },
+        orderBy: { createdAt: "desc" },
+        take,
+      }),
+      prisma.trip.count({ where }),
+    ]);
+
+    return res.json({ type, total, limit: take, rows: rows.map(tripDetailRow) });
+  }
+
+  if (type === "localsTouristsVerified") {
+    const localWhere = { createdAt: createdToday, passengerType: { not: "FOREIGN_TOURIST" } };
+    const verifiedTouristWhere = {
+      createdAt: createdToday,
+      passengerType: "FOREIGN_TOURIST",
+      isPassportVerified: true,
+      isFaceVerified: true,
+    };
+
+    const [locals, verifiedTourists, localTotal, verifiedTouristTotal] = await Promise.all([
+      prisma.passenger.findMany({ where: localWhere, orderBy: { createdAt: "desc" }, take }),
+      prisma.passenger.findMany({ where: verifiedTouristWhere, orderBy: { createdAt: "desc" }, take }),
+      prisma.passenger.count({ where: localWhere }),
+      prisma.passenger.count({ where: verifiedTouristWhere }),
+    ]);
+
+    const rows = [
+      ...locals.map((p) => passengerDetailRow(p, "Local passenger")),
+      ...verifiedTourists.map((p) => passengerDetailRow(p, "Verified foreign tourist")),
+    ]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, take);
+
+    return res.json({
+      type,
+      total: localTotal + verifiedTouristTotal,
+      limit: take,
+      rows,
+      summary: { local: localTotal, verifiedTourist: verifiedTouristTotal },
+    });
+  }
+
+  return res.status(400).json({ message: "Unknown dashboard detail type" });
+}
+
+module.exports = { getStats, getDetails };

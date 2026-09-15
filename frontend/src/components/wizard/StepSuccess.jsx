@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, RotateCcw, Printer, Download, Mail, MessageSquare, CloudOff, RefreshCw } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Button } from "../ui/Button";
@@ -31,6 +32,7 @@ export function StepSuccess() {
   const [isResending, setIsResending] = useState(false);
   const [smsStatus, setSmsStatus] = useState(null);
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!result || result.offline) return;
@@ -47,10 +49,18 @@ export function StepSuccess() {
 
   if (!result) return null;
 
+  function finishSession() {
+    dispatch({ type: "RESET" });
+    navigate("/");
+  }
+
   async function handleResendSms() {
     setIsResending(true);
     try {
-      const res = await apiClient.post(`/passengers/${result.trip.id}/resend-sms`);
+      const endpoint = result.familyBooking
+        ? `/family-bookings/${result.familyBooking.id}/resend-sms`
+        : `/passengers/${result.trip.id}/resend-sms`;
+      const res = await apiClient.post(endpoint);
       setSmsStatus(res.data.sms);
       showToast({
         title: res.data.sms.sent ? "SMS Confirmation Resent!" : "Resend failed",
@@ -119,9 +129,9 @@ export function StepSuccess() {
         </div>
 
         <div className="mt-8 flex justify-center gap-3 print:hidden">
-          <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={() => dispatch({ type: "RESET" })}>
+          <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={finishSession}>
             <RotateCcw className="h-4 w-4" />
-            Done / Next Passenger
+            Finish / Kiosk Home
           </Button>
         </div>
       </div>
@@ -137,7 +147,9 @@ export function StepSuccess() {
       </div>
       <h2 className="text-xl font-semibold text-slate-900 print:hidden">Registration Complete</h2>
       <p className="mt-1 text-sm text-slate-500 print:hidden">
-        Please keep your confirmation reference for boarding.
+        {result.familyBooking
+          ? `The primary passenger's QR covers all ${result.familyBooking.memberCount} registered travelers.`
+          : "Please keep your confirmation reference for boarding."}
       </p>
 
       <div className="mt-8 print:mt-0">
@@ -151,20 +163,37 @@ export function StepSuccess() {
         />
       </div>
 
+      {result.familyBooking && result.trips?.length > 1 && (
+        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-left print:hidden">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-800">Registered Travelers</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-700/75">Only the primary passenger above receives a QR code. Accompanying members are recorded in the admin manifest under the same group.</p>
+          <div className="mt-3 space-y-2">
+            {result.trips.map((registeredTrip, index) => (
+              <div key={registeredTrip.id} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-2.5">
+                <span className="text-sm font-bold text-slate-900">{registeredTrip.passenger?.fullName || (index === 0 ? passenger.fullName : `Member ${index}`)}</span>
+                <span className="text-[11px] font-semibold text-emerald-700">{index === 0 ? "Primary / QR holder" : "Recorded member"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {(notifications?.email || smsStatus) && (
         <div className="mx-auto mt-4 max-w-md space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3 print:hidden">
           <NotificationRow icon={Mail} label="Email confirmation" notification={notifications?.email} />
           <NotificationRow icon={MessageSquare} label="SMS confirmation" notification={smsStatus} />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs"
-            onClick={handleResendSms}
-            disabled={isResending}
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isResending && "animate-spin")} />
-            {isResending ? "Resending..." : "Resend SMS Confirmation"}
-          </Button>
+          {passenger.contactNumber && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+              onClick={handleResendSms}
+              disabled={isResending}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isResending && "animate-spin")} />
+              {isResending ? "Resending..." : "Resend SMS Confirmation"}
+            </Button>
+          )}
         </div>
       )}
 
@@ -177,9 +206,9 @@ export function StepSuccess() {
           <Download className="h-4 w-4" />
           {isDownloading ? "Preparing..." : "Download Pass"}
         </Button>
-        <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={() => dispatch({ type: "RESET" })}>
+        <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={finishSession}>
           <RotateCcw className="h-4 w-4" />
-          Done / Next Passenger
+          Finish / Kiosk Home
         </Button>
       </div>
     </div>

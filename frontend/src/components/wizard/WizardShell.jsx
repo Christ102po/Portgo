@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Anchor, Search, Ban, RefreshCw } from "lucide-react";
+import { Anchor, Search, Ban, RefreshCw, Home } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { usePortAdvisory } from "../../hooks/usePortAdvisory";
 import { StepIndicator } from "./StepIndicator";
@@ -12,9 +12,6 @@ import { StepSelfieCapture } from "./StepSelfieCapture";
 import { StepTripDetails } from "./StepTripDetails";
 import { StepConfirmation } from "./StepConfirmation";
 import { StepSuccess } from "./StepSuccess";
-import { StepGroupMembers } from "./StepGroupMembers";
-import { StepGroupConfirmation } from "./StepGroupConfirmation";
-import { StepGroupSuccess } from "./StepGroupSuccess";
 import { KioskTerminalHeader } from "./KioskTerminalHeader";
 import { IdleResetModal } from "./IdleResetModal";
 import { ConnectivityBadge } from "../ConnectivityBadge";
@@ -31,6 +28,7 @@ import { isAudioGuidanceEnabled, subscribeAudioGuidance } from "../../lib/audioG
 import { speak } from "../../lib/speech";
 import { getStepAnnouncement, SUCCESS_ANNOUNCEMENT } from "../../lib/stepAnnouncements";
 import { cn } from "../../lib/cn";
+import { useNavigate } from "react-router-dom";
 
 const variants = {
   enter: { opacity: 0, x: 40 },
@@ -56,16 +54,8 @@ const TOURIST_STEPS = {
   6: StepConfirmation,
 };
 
-const GROUP_STEPS = {
-  1: StepPassengerType,
-  2: StepTransactionType,
-  3: StepGroupMembers,
-  4: StepTripDetails,
-  5: StepGroupConfirmation,
-};
+const TOTAL_STEPS = 6;
 
-const GROUP_TOTAL_STEPS = 5;
-const INDIVIDUAL_TOTAL_STEPS = 6;
 
 function SuspendedNotice({ reason }) {
   return (
@@ -91,11 +81,11 @@ export function WizardShell() {
   const advisory = usePortAdvisory();
   const isSuspended = !!advisory?.suspended;
   const isSuccess = !!state.result;
-  const isGroupMode = state.registrationMode === "GROUP";
-  const stepComponents = isGroupMode ? GROUP_STEPS : state.passengerType === "FOREIGN_TOURIST" ? TOURIST_STEPS : LOCAL_STEPS;
-  const totalSteps = isGroupMode ? GROUP_TOTAL_STEPS : INDIVIDUAL_TOTAL_STEPS;
+  const stepComponents = state.passengerType === "FOREIGN_TOURIST" ? TOURIST_STEPS : LOCAL_STEPS;
+  const totalSteps = TOTAL_STEPS;
   const StepComponent = stepComponents[state.step];
-  const SuccessComponent = isGroupMode ? StepGroupSuccess : StepSuccess;
+  const SuccessComponent = StepSuccess;
+  const navigate = useNavigate();
   // Passenger Information is laid out as a wide 2-column form and needs
   // more room than every other (narrow, single-column) step.
   const isWideStep = StepComponent === StepPersonalInfo;
@@ -127,13 +117,13 @@ export function WizardShell() {
       return;
     }
     if (isSuspended) return;
-    const text = getStepAnnouncement({ step: state.step, passengerType: state.passengerType, isGroupMode });
+    const text = getStepAnnouncement({ step: state.step, passengerType: state.passengerType, isGroupMode: false });
     speak(text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioEnabled, state.step, isSuccess, isGroupMode]);
+  }, [audioEnabled, state.step, isSuccess]);
   const { isWarning, secondsLeft, stayActive } = useIdleTimer({
     active: idleActive,
-    onIdle: () => dispatch({ type: "RESET" }),
+    onIdle: () => { dispatch({ type: "RESET" }); navigate("/"); },
   });
 
   return (
@@ -155,7 +145,16 @@ export function WizardShell() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => { dispatch({ type: "RESET" }); navigate("/"); }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 text-xs font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:h-10 sm:px-3"
+              title="Return to kiosk home"
+            >
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Kiosk Home</span>
+            </button>
             <ConnectivityBadge />
             {!isSuccess && (
               <span className="hidden text-xs font-medium text-white/50 min-[420px]:inline">
@@ -207,7 +206,7 @@ export function WizardShell() {
               currentStep={state.step}
               passengerType={state.passengerType}
               totalSteps={totalSteps}
-              isGroupMode={isGroupMode}
+              isGroupMode={false}
             />
           </div>
         )}

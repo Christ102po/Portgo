@@ -30,6 +30,22 @@ function SectionLabel({ children }) {
   );
 }
 
+
+function memberPayload(member) {
+  return {
+    fullName: member.fullName,
+    age: member.age ? Number(member.age) : undefined,
+    gender: member.gender,
+    isSeniorCitizen: !!member.isSeniorCitizen,
+    isPWD: !!member.isPWD,
+    isPregnant: !!member.isPregnant,
+    needsWheelchair: !!member.needsWheelchair,
+    isStudent: !!member.isStudent,
+    isInfant: !!member.isInfant,
+    isMedicalEmergency: !!member.isMedicalEmergency,
+  };
+}
+
 export function StepConfirmation() {
   const { state, dispatch } = useWizard();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +53,7 @@ export function StepConfirmation() {
   const [schedule, setSchedule] = useState(null);
   const { showToast } = useToast();
   const isTourist = state.passengerType === "FOREIGN_TOURIST";
+  const hasMembers = state.groupMembers.length > 0;
 
   useEffect(() => {
     if (!state.shipId || !state.scheduleId) return;
@@ -59,6 +76,7 @@ export function StepConfirmation() {
       email: state.email || undefined,
       isEmailVerified: state.isEmailVerified || undefined,
       accommodationClass: state.accommodationClass,
+      members: state.groupMembers.map(memberPayload),
       isSeniorCitizen: state.isSeniorCitizen,
       isPWD: state.isPWD,
       isPregnant: state.isPregnant,
@@ -103,6 +121,7 @@ export function StepConfirmation() {
 
     if (!isNetworkAvailable()) {
       const record = enqueue("/passengers", payload);
+      dispatch({ type: "SET_FIELD", field: "groupMembers", value: [] });
       dispatch({
         type: "SET_RESULT",
         result: { offline: true, localId: record.localId, passenger: payload, ship: null, schedule: null },
@@ -113,11 +132,16 @@ export function StepConfirmation() {
 
     try {
       const res = await apiClient.post("/passengers", payload);
+      // Clear temporary kiosk member inputs immediately after registration.
+      // The backend records remain in Passenger/Trip/Admin data under the
+      // shared family booking, while the kiosk starts clean for the next user.
+      dispatch({ type: "SET_FIELD", field: "groupMembers", value: [] });
       dispatch({ type: "SET_RESULT", result: res.data });
     } catch (err) {
       if (!err.response) {
         // Network-level failure (request never reached the server) — fall back to offline queue.
         const record = enqueue("/passengers", payload);
+        dispatch({ type: "SET_FIELD", field: "groupMembers", value: [] });
         dispatch({
           type: "SET_RESULT",
           result: { offline: true, localId: record.localId, passenger: payload, ship: null, schedule: null },
@@ -136,7 +160,7 @@ export function StepConfirmation() {
       }
       if (err.response?.status === 409) {
         showToast({
-          title: "This schedule just filled up",
+          title: hasMembers ? "Not enough seats for all travelers" : "This schedule just filled up",
           description: err.response?.data?.message || "Please choose another schedule to continue.",
           variant: "error",
         });
@@ -222,6 +246,19 @@ export function StepConfirmation() {
               {specialAssistance.length > 0 && (
                 <Row label="Special Assistance" value={specialAssistance.join(", ")} />
               )}
+              {hasMembers && (
+                <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Accompanying Members ({state.groupMembers.length})</p>
+                  <div className="mt-2 space-y-1.5">
+                    {state.groupMembers.map((member, index) => (
+                      <div key={index} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-semibold text-slate-800">{member.fullName}</span>
+                        <span className="text-xs text-slate-500">Age {member.age} · {member.gender}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right column: Trip / Vessel Details */}
@@ -235,7 +272,9 @@ export function StepConfirmation() {
               <div className="mt-4 flex items-center gap-2 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
                 <QrCode className="h-5 w-5 shrink-0 text-emerald-600" />
                 <span className="text-sm font-semibold text-emerald-700">
-                  A scannable Digital Pass will be generated on submit
+                  {hasMembers
+                    ? `One QR will be generated for the primary passenger and cover all ${1 + state.groupMembers.length} travelers`
+                    : "A scannable Digital Pass will be generated on submit"}
                 </span>
               </div>
             </div>
@@ -253,7 +292,7 @@ export function StepConfirmation() {
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>
         <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" disabled={isSubmitting} onClick={handleSubmit}>
-          {isSubmitting ? "Generating..." : "Generate Digital Pass"}
+          {isSubmitting ? "Generating..." : hasMembers ? "Register Travelers & Generate Primary QR" : "Generate Digital Pass"}
         </Button>
       </div>
     </div>

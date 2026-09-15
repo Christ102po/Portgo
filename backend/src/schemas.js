@@ -27,6 +27,19 @@ const otpVerifySchema = z.object({
 const PASSENGER_TYPE_VALUES = ["LOCAL_RESIDENT", "LOCAL_TOURIST", "FOREIGN_TOURIST"];
 const VERIFICATION_DOCUMENT_TYPE_VALUES = ["VALID_ID", "STUDENT_ID", "BARANGAY_CLEARANCE", "PASSPORT"];
 
+const familyMemberSchema = z.object({
+  fullName: z.string().min(1),
+  age: z.coerce.number().int().min(0).max(130).optional().nullable(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  isSeniorCitizen: z.boolean().optional(),
+  isPWD: z.boolean().optional(),
+  isPregnant: z.boolean().optional(),
+  needsWheelchair: z.boolean().optional(),
+  isStudent: z.boolean().optional(),
+  isInfant: z.boolean().optional(),
+  isMedicalEmergency: z.boolean().optional(),
+});
+
 const passengerCreateSchema = z.object({
   fullName: z.string().min(1),
   contactNumber: z.string().min(7).optional().nullable(),
@@ -68,23 +81,11 @@ const passengerCreateSchema = z.object({
   ticketVerified: z.boolean().optional(),
   ticketPhotoUrl: z.string().optional().nullable(),
   accommodationClass: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
+  members: z.array(familyMemberSchema).max(20).optional().default([]),
 }).superRefine((data, ctx) => {
   if (data.passengerType !== "FOREIGN_TOURIST" && data.contactNumber && !isValidPhMobileNumber(data.contactNumber)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: INVALID_PH_PREFIX_MESSAGE, path: ["contactNumber"] });
   }
-});
-
-const familyMemberSchema = z.object({
-  fullName: z.string().min(1),
-  age: z.coerce.number().int().min(0).max(130).optional().nullable(),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  isSeniorCitizen: z.boolean().optional(),
-  isPWD: z.boolean().optional(),
-  isPregnant: z.boolean().optional(),
-  needsWheelchair: z.boolean().optional(),
-  isStudent: z.boolean().optional(),
-  isInfant: z.boolean().optional(),
-  isMedicalEmergency: z.boolean().optional(),
 });
 
 const familyBookingCreateSchema = z.object({

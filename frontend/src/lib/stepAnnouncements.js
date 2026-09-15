@@ -1,31 +1,22 @@
 const LOCAL_ANNOUNCEMENTS = {
-  1: "Are you a local resident or a tourist? Please tap your answer on the screen, or enter your phone number if you've registered before.",
+  1: "Choose whether the primary passenger is a local resident or a tourist.",
   2: "Please choose your trip direction: outbound if you're departing, or inbound if you're arriving.",
-  3: "Please enter your phone number, then tap Send Code to receive your six digit verification code.",
-  4: "Please enter your full name, gender, age, and address.",
+  3: "Enter a mobile number or email address. The verification code is sent automatically when the contact information is complete.",
+  4: "Enter the primary passenger details. You may optionally add accompanying members on this step.",
   5: "Please select your ship and departure schedule, then choose your accommodation class.",
-  6: "Please review your details, then tap Generate Digital Pass to finish.",
+  6: "Please review all passenger and trip details, then generate the digital pass to finish.",
 };
 
 const TOURIST_ANNOUNCEMENTS = {
   ...LOCAL_ANNOUNCEMENTS,
-  3: "Please take a selfie so we can verify your identity.",
-  4: "Please enter your full name, nationality, and passport number.",
+  3: "Please take a selfie so we can verify the primary passenger's identity.",
+  4: "Enter the primary passenger's name, nationality, and passport number. You may optionally add accompanying members on this step.",
 };
 
-const GROUP_ANNOUNCEMENTS = {
-  1: "Are you registering yourself or a group? Please tap your answer on the screen.",
-  2: "Please choose your trip direction: outbound if the group is departing, or inbound if the group is arriving.",
-  3: "Please add the names and details of everyone traveling in your group.",
-  4: "Please select your ship and departure schedule for the group.",
-  5: "Please review your group's details, then tap Confirm to finish.",
-};
-
-export function getStepAnnouncement({ step, passengerType, isGroupMode }) {
-  if (isGroupMode) return GROUP_ANNOUNCEMENTS[step] || "";
+export function getStepAnnouncement({ step, passengerType }) {
   if (passengerType === "FOREIGN_TOURIST") return TOURIST_ANNOUNCEMENTS[step] || "";
   return LOCAL_ANNOUNCEMENTS[step] || "";
 }
 
 export const SUCCESS_ANNOUNCEMENT =
-  "Registration complete. Please keep your digital pass for boarding, and show it to port staff at the gate.";
+  "Registration complete. Keep the primary passenger's digital pass for boarding. If accompanying members were added, the same QR covers the whole registered group.";

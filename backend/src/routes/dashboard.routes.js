@@ -6,5 +6,6 @@ const controller = require("../controllers/dashboard.controller");
 const router = express.Router();
 
 router.get("/stats", requireAuth, asyncHandler(controller.getStats));
+router.get("/details", requireAuth, asyncHandler(controller.getDetails));
 
 module.exports = router;

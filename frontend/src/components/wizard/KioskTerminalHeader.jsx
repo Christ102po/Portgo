@@ -10,7 +10,6 @@ import {
 import { isSpeechAvailable, speak, stopSpeech } from "../../lib/speech";
 import { useLanguage } from "../../hooks/useLanguage";
 import { LANGUAGES } from "../../lib/i18n";
-import { ApkDownloadButton } from "../ApkDownloadButton";
 
 function LanguageSwitcher() {
   const { lang, setLanguage } = useLanguage();
@@ -110,8 +109,6 @@ export function KioskTerminalHeader() {
         <AudioGuidanceToggle />
         <span className="hidden text-white/20 sm:inline">&bull;</span>
         <LanguageSwitcher />
-        <span className="hidden text-white/20 sm:inline">&bull;</span>
-        <ApkDownloadButton dark compact />
       </div>
     </div>
   );

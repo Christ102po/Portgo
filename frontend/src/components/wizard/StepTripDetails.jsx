@@ -19,7 +19,7 @@ const CLASS_ICONS = {
   BUSINESS: Star,
 };
 
-function AccommodationClassSelector({ classAvailability, value, onSelect }) {
+function AccommodationClassSelector({ classAvailability, value, onSelect, groupSize = 1 }) {
   return (
     <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -30,12 +30,14 @@ function AccommodationClassSelector({ classAvailability, value, onSelect }) {
           const Icon = CLASS_ICONS[meta.value] || Armchair;
           const availability = classAvailability?.find((c) => c.className === meta.value);
           const isFull = !!availability?.isFull;
+          const insufficientForGroup = availability?.seatsLeft != null && availability.seatsLeft < groupSize;
+          const unavailable = isFull || insufficientForGroup;
           const selected = value === meta.value;
           return (
             <button
               key={meta.value}
               type="button"
-              disabled={isFull}
+              disabled={unavailable}
               onClick={() => onSelect(meta.value)}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-lg border-2 px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
@@ -49,7 +51,7 @@ function AccommodationClassSelector({ classAvailability, value, onSelect }) {
               <span className={cn("text-[11px]", selected ? "text-emerald-50/90" : "text-slate-500")}>{meta.subtitle}</span>
               {availability?.capacity != null && (
                 <span className={cn("text-[11px] font-medium", isFull ? "text-red-600" : selected ? "text-emerald-50" : "text-slate-500")}>
-                  {isFull ? "Full" : `${availability.seatsLeft} of ${availability.capacity} seats left`}
+                  {isFull ? "Full" : insufficientForGroup ? `Needs ${groupSize} seats · only ${availability.seatsLeft} left` : `${availability.seatsLeft} of ${availability.capacity} seats left`}
                 </span>
               )}
             </button>
@@ -63,7 +65,7 @@ function AccommodationClassSelector({ classAvailability, value, onSelect }) {
   );
 }
 
-function SeatMeter({ schedule }) {
+function SeatMeter({ schedule, groupSize = 1 }) {
   if (!schedule) return null;
   const isLow = !schedule.isFull && schedule.seatsLeft <= LOW_SEATS_THRESHOLD;
   const pct = Math.min(100, Math.round((schedule.bookedCount / schedule.capacity) * 100));
@@ -84,6 +86,11 @@ function SeatMeter({ schedule }) {
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
         <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${pct}%` }} />
       </div>
+      {groupSize > 1 && (
+        <p className={cn("mt-1.5 text-[11px] font-semibold", schedule.seatsLeft < groupSize ? "text-red-600" : "text-emerald-700")}>
+          Your registration needs {groupSize} seats for the primary passenger and accompanying members.
+        </p>
+      )}
       {isLow && (
         <p className="mt-1.5 text-[11px] font-medium text-amber-600">
           Only {schedule.seatsLeft} slot{schedule.seatsLeft === 1 ? "" : "s"} left on this schedule!
@@ -105,6 +112,7 @@ export function StepTripDetails() {
   const [schedules, setSchedules] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
+  const groupSize = 1 + state.groupMembers.length;
 
   useEffect(() => {
     setIsLoading(true);
@@ -131,11 +139,11 @@ export function StepTripDetails() {
       filteredSchedules.map((s) => ({
         value: s.id,
         label: `${s.departureTime} — ${routeLabel(s.route)}${
-          s.isFull ? "  (FULL)" : `  (${s.seatsLeft} left)`
+          s.isFull ? "  (FULL)" : s.seatsLeft < groupSize ? `  (ONLY ${s.seatsLeft} LEFT · NEED ${groupSize})` : `  (${s.seatsLeft} left)`
         }${s.status === "DELAYED" ? `  · Delayed +${s.delayMinutes}m` : ""}`,
-        disabled: s.isFull,
+        disabled: s.isFull || s.seatsLeft < groupSize,
       })),
-    [filteredSchedules]
+    [filteredSchedules, groupSize]
   );
 
   const selectedSchedule = useMemo(
@@ -155,8 +163,17 @@ export function StepTripDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.scheduleId]);
 
+  const selectedClassAvailability = selectedSchedule?.classAvailability?.find(
+    (item) => item.className === state.accommodationClass
+  );
   const canContinue =
-    state.shipId && state.scheduleId && selectedSchedule && !selectedSchedule.isFull && state.accommodationClass;
+    state.shipId &&
+    state.scheduleId &&
+    selectedSchedule &&
+    !selectedSchedule.isFull &&
+    selectedSchedule.seatsLeft >= groupSize &&
+    state.accommodationClass &&
+    (!selectedClassAvailability || selectedClassAvailability.seatsLeft >= groupSize);
 
   return (
     <div>
@@ -202,11 +219,12 @@ export function StepTripDetails() {
 
           {selectedSchedule && (
             <div className="sm:col-span-2">
-              <SeatMeter schedule={selectedSchedule} />
+              <SeatMeter schedule={selectedSchedule} groupSize={groupSize} />
               <AccommodationClassSelector
                 classAvailability={selectedSchedule.classAvailability}
                 value={state.accommodationClass}
                 onSelect={(className) => setField("accommodationClass", className)}
+                groupSize={groupSize}
               />
             </div>
           )}

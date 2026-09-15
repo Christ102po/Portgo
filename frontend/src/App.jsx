@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
+import KioskLandingPage from "./pages/KioskLandingPage";
 import KioskPage from "./pages/KioskPage";
+import KioskQrScannerPage from "./pages/KioskQrScannerPage";
 import LoginPage from "./pages/admin/LoginPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import RecordsPage from "./pages/admin/RecordsPage";
@@ -24,7 +26,9 @@ import { RequireRole } from "./routes/RequireRole";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<KioskPage />} />
+      <Route path="/" element={<KioskLandingPage />} />
+      <Route path="/register" element={<KioskPage />} />
+      <Route path="/scan-pass" element={<KioskQrScannerPage />} />
       <Route path="/display" element={<DisplayBoardPage />} />
       <Route path="/admin/login" element={<LoginPage />} />
       <Route
@@ -37,69 +41,20 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="records" element={<RecordsPage />} />
         <Route path="manifest" element={<ManifestDashboardPage />} />
-        <Route
-          path="barangay-masterlist"
-          element={
-            <RequireRole roles={["SUPER_ADMIN", "ADMIN"]}>
-              <BarangayMasterlistPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="ticketing"
-          element={
-            <RequireRole roles={["SUPER_ADMIN", "ADMIN", "TICKETING_OFFICER"]}>
-              <TicketingDeskPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="gate-scanner"
-          element={
-            <RequireRole roles={["SUPER_ADMIN", "ADMIN", "GATE_SCANNER"]}>
-              <GateScannerPage />
-            </RequireRole>
-          }
-        />
+        <Route path="barangay-masterlist" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN"]}><BarangayMasterlistPage /></RequireRole>} />
+        <Route path="ticketing" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "TICKETING_OFFICER"]}><TicketingDeskPage /></RequireRole>} />
+        <Route path="gate-scanner" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "GATE_SCANNER"]}><GateScannerPage /></RequireRole>} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="ships" element={<ShipsPage />} />
         <Route path="schedules" element={<SchedulesPage />} />
         <Route path="vehicles" element={<VehiclesPage />} />
-        <Route
-          path="audit-logs"
-          element={
-            <RequireRole roles={["SUPER_ADMIN"]}>
-              <AuditLogsPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="watchlist"
-          element={
-            <RequireRole roles={["SUPER_ADMIN", "ADMIN"]}>
-              <WatchlistPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="staff"
-          element={
-            <RequireRole roles={["SUPER_ADMIN"]}>
-              <StaffPage />
-            </RequireRole>
-          }
-        />
+        <Route path="audit-logs" element={<RequireRole roles={["SUPER_ADMIN"]}><AuditLogsPage /></RequireRole>} />
+        <Route path="watchlist" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN"]}><WatchlistPage /></RequireRole>} />
+        <Route path="staff" element={<RequireRole roles={["SUPER_ADMIN"]}><StaffPage /></RequireRole>} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

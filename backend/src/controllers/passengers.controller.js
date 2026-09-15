@@ -41,6 +41,306 @@ async function ensureDemoFallbackPassenger() {
   return prisma.passenger.create({ data: DEMO_FALLBACK_DATA });
 }
 
+function randomGroupToken(length = 5) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let value = "";
+  for (let i = 0; i < length; i++) value += chars[Math.floor(Math.random() * chars.length)];
+  return value;
+}
+
+function generateGroupMasterCode() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `FAM-${y}${m}${d}-${randomGroupToken()}`;
+}
+
+async function createPrimaryWithMembers(req, res) {
+  const data = req.body;
+  const members = Array.isArray(data.members) ? data.members : [];
+  const groupSize = 1 + members.length;
+  const isForeignTourist = data.passengerType === "FOREIGN_TOURIST";
+
+  if (isForeignTourist && !data.passportNumber) {
+    return res.status(400).json({ message: "Missing required fields", details: ["passportNumber"] });
+  }
+
+  const advisory = await getAdvisorySingleton();
+  if (advisory.suspended) {
+    return res.status(423).json({
+      message:
+        advisory.suspendedReason ||
+        "Port operations are currently suspended due to a Coast Guard Weather Advisory. New registrations are temporarily disabled.",
+    });
+  }
+
+  const identityField = isForeignTourist ? "passportNumber" : "contactNumber";
+  const identityValue = isForeignTourist ? data.passportNumber : data.contactNumber;
+  if (identityValue && data.scheduleId) {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = addDays(todayStart, 1);
+    const duplicateTrip = await prisma.trip.findFirst({
+      where: {
+        status: { in: ACTIVE_TRIP_STATUSES },
+        scheduleId: data.scheduleId,
+        createdAt: { gte: todayStart, lt: todayEnd },
+        passenger: { [identityField]: identityValue },
+      },
+    });
+    if (duplicateTrip) {
+      return res.status(409).json({ code: "DUPLICATE_REGISTRATION", message: DUPLICATE_REGISTRATION_MESSAGE });
+    }
+  }
+
+  const ship = await prisma.ship.findUnique({ where: { id: data.shipId } });
+  const schedule = await prisma.schedule.findUnique({ where: { id: data.scheduleId } });
+  if (!ship) return res.status(400).json({ message: "Selected ship does not exist" });
+  if (!schedule) return res.status(400).json({ message: "Selected schedule does not exist" });
+  if (!BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
+    return res.status(400).json({ message: "Selected schedule is not currently available for booking" });
+  }
+
+  const bookedCount = await getBookedCount(data.scheduleId);
+  if (bookedCount + groupSize > ship.capacity) {
+    return res.status(409).json({
+      message: `Not enough seats remain for all ${groupSize} registered travelers on this schedule.`,
+    });
+  }
+
+  let shipClass = null;
+  if (data.accommodationClass) {
+    shipClass = await prisma.shipClass.findUnique({
+      where: { shipId_className: { shipId: data.shipId, className: data.accommodationClass } },
+    });
+    if (shipClass) {
+      const classBooked = await getClassBookedCount(data.scheduleId, data.accommodationClass);
+      if (classBooked + groupSize > shipClass.capacity) {
+        return res.status(409).json({
+          message: `Not enough ${data.accommodationClass.replace("_", " ")} seats remain for all ${groupSize} travelers.`,
+        });
+      }
+    }
+  }
+
+  if (data.ticketSerialNumber) {
+    const duplicateTicket = await prisma.trip.findFirst({ where: { ticketSerialNumber: data.ticketSerialNumber } });
+    if (duplicateTicket) {
+      return res.status(409).json({ message: "This ticket serial number has already been used for another booking." });
+    }
+  }
+
+  let result = null;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < MAX_PASS_NUMBER_ATTEMPTS; attempt++) {
+    const masterCode = generateGroupMasterCode();
+    const leaderPassNumber = generatePassNumber();
+    const masterQrCode = await generateQrDataUrl({
+      type: "FAMILY",
+      masterCode,
+      passNumber: leaderPassNumber,
+      passengerName: data.fullName,
+      headFullName: data.fullName,
+      memberCount: groupSize,
+      transactionType: data.transactionType,
+      ship: ship.name,
+      schedule: schedule.departureTime,
+      route: schedule.route,
+      issuedAt: new Date().toISOString(),
+    });
+
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const currentBooked = await tx.trip.count({
+          where: { scheduleId: data.scheduleId, status: { in: ["ACTIVE", "BOARDED"] } },
+        });
+        if (currentBooked + groupSize > ship.capacity) {
+          const err = new Error(`Not enough seats remain for all ${groupSize} registered travelers on this schedule.`);
+          err.status = 409;
+          throw err;
+        }
+
+        if (data.accommodationClass && shipClass) {
+          const currentClassBooked = await tx.trip.count({
+            where: {
+              scheduleId: data.scheduleId,
+              accommodationClass: data.accommodationClass,
+              status: { in: ["ACTIVE", "BOARDED"] },
+            },
+          });
+          if (currentClassBooked + groupSize > shipClass.capacity) {
+            const err = new Error(
+              `Not enough ${data.accommodationClass.replace("_", " ")} seats remain for all ${groupSize} travelers.`
+            );
+            err.status = 409;
+            throw err;
+          }
+        }
+
+        const familyBooking = await tx.familyBooking.create({
+          data: {
+            masterCode,
+            qrCodeData: masterQrCode,
+            headFullName: data.fullName,
+            headContact: data.contactNumber || null,
+            memberCount: groupSize,
+          },
+        });
+
+        const leaderPassenger = await tx.passenger.create({
+          data: {
+            fullName: data.fullName,
+            contactNumber: data.contactNumber || null,
+            gender: data.gender || null,
+            address: data.address || null,
+            passengerType: data.passengerType,
+            passportNumber: isForeignTourist ? data.passportNumber : null,
+            nationality: isForeignTourist ? data.nationality || null : null,
+            age: data.age != null ? data.age : null,
+            email: data.email || null,
+            isEmailVerified: !!data.email && !!data.isEmailVerified,
+            emergencyContactName: data.emergencyContactName || null,
+            emergencyContactPhone: data.emergencyContactPhone || null,
+            isSeniorCitizen: !!data.isSeniorCitizen,
+            isPWD: !!data.isPWD,
+            isPregnant: !!data.isPregnant,
+            needsWheelchair: !!data.needsWheelchair,
+            isStudent: !!data.isStudent,
+            isInfant: !!data.isInfant,
+            isMedicalEmergency: !!data.isMedicalEmergency,
+            isPhoneVerified: !isForeignTourist && !!data.contactNumber,
+            isPassportVerified: isForeignTourist && !!data.isPassportVerified,
+            isFaceVerified: isForeignTourist && !!data.isFaceVerified,
+            faceMatchScore: isForeignTourist && data.faceMatchScore != null ? data.faceMatchScore : null,
+            selfiePhotoUrl: isForeignTourist ? data.selfiePhotoUrl || null : null,
+            idNumber: !isForeignTourist ? data.idNumber || null : null,
+            verificationDocumentType: data.verificationDocumentType || null,
+            verificationDocumentUrl: data.verificationDocumentUrl || null,
+            isDocumentVerified: !!data.isDocumentVerified,
+          },
+        });
+
+        const leaderTrip = await tx.trip.create({
+          data: {
+            passNumber: leaderPassNumber,
+            qrCodeData: masterQrCode,
+            transactionType: data.transactionType,
+            purpose: data.purpose || "OTHER",
+            hasVehicle: !!data.hasVehicle,
+            vehicleType: data.hasVehicle ? data.vehicleType || null : null,
+            plateNumber: data.hasVehicle ? data.plateNumber || null : null,
+            ticketSerialNumber: data.ticketSerialNumber || null,
+            ticketVesselName: data.ticketVesselName || null,
+            ticketTravelDate: data.ticketTravelDate || null,
+            ticketVerified: !!data.ticketVerified,
+            ticketPhotoUrl: data.ticketPhotoUrl || null,
+            accommodationClass: data.accommodationClass,
+            familyBookingId: familyBooking.id,
+            passengerId: leaderPassenger.id,
+            shipId: data.shipId,
+            scheduleId: data.scheduleId,
+          },
+          include: { passenger: true },
+        });
+
+        const memberTrips = [];
+        for (const member of members) {
+          const memberPassenger = await tx.passenger.create({
+            data: {
+              fullName: member.fullName,
+              contactNumber: null,
+              gender: member.gender || null,
+              address: data.address || null,
+              passengerType: data.passengerType,
+              age: member.age != null ? member.age : null,
+              email: null,
+              isSeniorCitizen: !!member.isSeniorCitizen,
+              isPWD: !!member.isPWD,
+              isPregnant: !!member.isPregnant,
+              needsWheelchair: !!member.needsWheelchair,
+              isStudent: !!member.isStudent,
+              isInfant: !!member.isInfant,
+              isMedicalEmergency: !!member.isMedicalEmergency,
+              isPhoneVerified: false,
+              isEmailVerified: false,
+              isPassportVerified: false,
+              isFaceVerified: false,
+              isDocumentVerified: false,
+            },
+          });
+
+          const memberTrip = await tx.trip.create({
+            data: {
+              passNumber: generatePassNumber(),
+              // Intentionally blank: accompanying members are recorded in the
+              // manifest/admin system but do not receive an individual QR.
+              qrCodeData: "",
+              transactionType: data.transactionType,
+              purpose: data.purpose || "OTHER",
+              accommodationClass: data.accommodationClass,
+              familyBookingId: familyBooking.id,
+              passengerId: memberPassenger.id,
+              shipId: data.shipId,
+              scheduleId: data.scheduleId,
+            },
+            include: { passenger: true },
+          });
+          memberTrips.push(memberTrip);
+        }
+
+        return { familyBooking, leaderPassenger, leaderTrip, memberTrips };
+      });
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      if (err.status === 409) break;
+      if (err.code === "P2002") continue;
+    }
+  }
+
+  if (!result) {
+    const err = lastError || new Error("Failed to create the passenger group registration");
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+
+  const referenceCode = result.familyBooking.masterCode;
+  const notifications = {
+    email: await sendRegistrationEmail({
+      email: result.leaderPassenger.email,
+      fullName: result.leaderPassenger.fullName,
+      referenceCode,
+      ship,
+      schedule,
+    }),
+    sms: await sendRegistrationSms({
+      contactNumber: result.leaderPassenger.contactNumber,
+      fullName: result.leaderPassenger.fullName,
+      referenceCode,
+      ship,
+      schedule,
+    }),
+  };
+
+  const trips = [result.leaderTrip, ...result.memberTrips];
+  return res.status(201).json({
+    passenger: result.leaderPassenger,
+    trip: result.leaderTrip,
+    familyBooking: result.familyBooking,
+    trips,
+    groupMembers: result.memberTrips.map((trip) => trip.passenger),
+    ship,
+    schedule,
+    qrCodeDataUrl: result.familyBooking.qrCodeData,
+    passNumber: result.leaderTrip.passNumber,
+    masterCode: result.familyBooking.masterCode,
+    notifications,
+    isGroup: true,
+  });
+}
+
 async function create(req, res) {
   const {
     fullName,
@@ -83,9 +383,14 @@ async function create(req, res) {
     ticketVerified,
     ticketPhotoUrl,
     accommodationClass,
+    members = [],
   } = req.body;
 
   const isForeignTourist = passengerType === "FOREIGN_TOURIST";
+
+  if (Array.isArray(members) && members.length > 0) {
+    return createPrimaryWithMembers(req, res);
+  }
 
   const advisory = await getAdvisorySingleton();
   if (advisory.suspended) {
@@ -634,10 +939,15 @@ async function lookup(req, res) {
         { familyBooking: { masterCode: trimmed } },
       ],
     },
-    include: { passenger: true, ship: true, schedule: true },
+    include: { passenger: true, ship: true, schedule: true, familyBooking: true },
     orderBy: { createdAt: "desc" },
-    take: 10,
+    take: 25,
   });
+
+  // For unified group registrations, the primary passenger is the only trip
+  // that stores the shared QR. Keep that row first so kiosk retrieval always
+  // presents the QR holder before accompanying members.
+  trips.sort((a, b) => Number(Boolean(b.qrCodeData)) - Number(Boolean(a.qrCodeData)));
 
   res.json({
     trips: trips.map((trip) => ({
@@ -647,6 +957,7 @@ async function lookup(req, res) {
       schedule: trip.schedule,
       qrCodeDataUrl: trip.qrCodeData,
       passNumber: trip.passNumber,
+      familyBooking: trip.familyBooking || null,
     })),
   });
 }

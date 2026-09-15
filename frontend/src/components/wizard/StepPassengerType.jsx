@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Plane, UserRound, UsersRound, CheckCircle2, Siren, MapPinned, Globe2 } from "lucide-react";
+import { Home, Plane, CheckCircle2, Siren, MapPinned, Globe2, UsersRound } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { useLanguage } from "../../hooks/useLanguage";
 import { cn } from "../../lib/cn";
@@ -21,17 +21,8 @@ export function StepPassengerType() {
   const isTouristType = state.passengerType === "LOCAL_TOURIST" || state.passengerType === "FOREIGN_TOURIST";
   const [touristExpanded, setTouristExpanded] = useState(isTouristType);
 
-  const MODE_OPTIONS = [
-    { value: "INDIVIDUAL", label: t("registerMyself"), icon: UserRound },
-    { value: "GROUP", label: t("registerGroup"), icon: UsersRound },
-  ];
-
   function select(value) {
     dispatch({ type: "SET_FIELD", field: "passengerType", value });
-  }
-
-  function selectMode(value) {
-    dispatch({ type: "SET_FIELD", field: "registrationMode", value });
   }
 
   function selectCard(value) {
@@ -46,36 +37,21 @@ export function StepPassengerType() {
 
   return (
     <div>
-      <div className="mx-auto mb-5 inline-flex w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5">
-        {MODE_OPTIONS.map((opt) => {
-          const Icon = opt.icon;
-          const selected = (state.registrationMode || "INDIVIDUAL") === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => selectMode(opt.value)}
-              className={cn(
-                "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all duration-300",
-                selected
-                  ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-md shadow-emerald-900/10 ring-1 ring-emerald-500"
-                  : "text-slate-500 hover:bg-white hover:text-emerald-800"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {opt.label}
-            </button>
-          );
-        })}
+      <div className="mx-auto mb-5 flex max-w-xl items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+          <UsersRound className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-black text-emerald-950">One registration flow</p>
+          <p className="text-xs leading-5 text-emerald-800/75">Register the primary passenger first. You can optionally add accompanying members on the Passenger Information step.</p>
+        </div>
       </div>
 
       <h2 className="section-title">
         {t("passengerTypeQuestion")}
       </h2>
       <p className="section-subtitle mb-5">
-        {state.registrationMode === "GROUP"
-          ? t("passengerTypeSubtitleGroup")
-          : t("passengerTypeSubtitleIndividual")}
+        Choose the passenger type for the primary passenger. Accompanying members can be added later if needed.
       </p>
 
       <div className="my-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">

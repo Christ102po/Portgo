@@ -23,6 +23,7 @@ import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../../components/ui/Dialog";
 import { LocalTouristChart } from "../../components/admin/charts/LocalTouristChart";
 import { PeakHoursChart } from "../../components/admin/charts/PeakHoursChart";
 import { apiClient, downloadWithAuth } from "../../lib/apiClient";
@@ -143,6 +144,162 @@ function QuickSearch() {
   );
 }
 
+
+function formatDetailDate(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatTransaction(value) {
+  if (value === "SIGN_IN") return "Departing · Surigao → Dapa";
+  if (value === "SIGN_OUT") return "Arriving · Dapa → Surigao";
+  return "—";
+}
+
+function formatStatus(value) {
+  if (!value) return "—";
+  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function DashboardDetailDialog({ detail, onOpenChange }) {
+  const rows = detail.rows || [];
+
+  return (
+    <Dialog open={detail.open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl p-0 sm:p-0">
+        <div className="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+          <DialogTitle className="text-xl">{detail.title || "Dashboard details"}</DialogTitle>
+          <DialogDescription>
+            {detail.description || "The records included in this dashboard total."}
+          </DialogDescription>
+          {!detail.isLoading && !detail.error && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                {detail.total ?? rows.length} record{(detail.total ?? rows.length) === 1 ? "" : "s"}
+              </span>
+              {detail.summary?.local != null && (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  Locals: {detail.summary.local}
+                </span>
+              )}
+              {detail.summary?.verifiedTourist != null && (
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                  Verified tourists: {detail.summary.verifiedTourist}
+                </span>
+              )}
+              {detail.total > (detail.limit || 200) && (
+                <span className="text-slate-400">Showing the latest {detail.limit || 200} records.</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 sm:px-6">
+          {detail.isLoading && (
+            <div className="grid gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-slate-100 p-4">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!detail.isLoading && detail.error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {detail.error}
+            </div>
+          )}
+
+          {!detail.isLoading && !detail.error && rows.length === 0 && (
+            <div className="py-12 text-center">
+              <p className="font-semibold text-slate-700">No matching records today.</p>
+              <p className="mt-1 text-sm text-slate-400">This total currently has no data to display.</p>
+            </div>
+          )}
+
+          {!detail.isLoading && !detail.error && rows.length > 0 && (
+            <>
+              <div className="grid gap-3 md:hidden">
+                {rows.map((row) => (
+                  <div key={`${row.kind}-${row.id}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-900">{row.fullName}</p>
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{row.contact || "—"}</p>
+                      </div>
+                      <Badge variant="outline">{row.detailLabel || formatStatus(row.status)}</Badge>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                      <div>
+                        <p className="text-slate-400">Pass</p>
+                        <p className="font-semibold text-slate-700">{row.passNumber || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Direction</p>
+                        <p className="font-semibold text-slate-700">{formatTransaction(row.transactionType)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Ship / Route</p>
+                        <p className="font-semibold text-slate-700">{row.shipName || row.route || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Logged</p>
+                        <p className="font-semibold text-slate-700">{formatDetailDate(row.createdAt)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
+                <table className="w-full min-w-[900px] text-left text-sm">
+                  <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Passenger</th>
+                      <th className="px-4 py-3">Contact</th>
+                      <th className="px-4 py-3">Pass</th>
+                      <th className="px-4 py-3">Direction</th>
+                      <th className="px-4 py-3">Ship / Route</th>
+                      <th className="px-4 py-3">Status / Type</th>
+                      <th className="px-4 py-3">Logged</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={`${row.kind}-${row.id}`} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 font-semibold text-slate-900">{row.fullName}</td>
+                        <td className="px-4 py-3 text-slate-500">{row.contact || "—"}</td>
+                        <td className="px-4 py-3 font-medium text-slate-700">{row.passNumber || "—"}</td>
+                        <td className="px-4 py-3 text-slate-600">{formatTransaction(row.transactionType)}</td>
+                        <td className="px-4 py-3 text-slate-600">
+                          <p>{row.shipName || "—"}</p>
+                          {row.route && <p className="text-xs text-slate-400">{row.route}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline">{row.detailLabel || formatStatus(row.status)}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{formatDetailDate(row.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -156,10 +313,63 @@ export default function DashboardPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isPrintingReport, setIsPrintingReport] = useState(false);
   const [isImportingBarangay, setIsImportingBarangay] = useState(false);
+  const [detail, setDetail] = useState({
+    open: false,
+    type: null,
+    title: "",
+    description: "",
+    rows: [],
+    total: 0,
+    limit: 200,
+    summary: null,
+    isLoading: false,
+    error: "",
+  });
   const barangayFileInputRef = useRef(null);
   const { admin } = useAuth();
   const { showToast } = useToast();
   const canSeed = admin?.role === "SUPER_ADMIN" || admin?.role === "ADMIN";
+
+  async function openDetail(type, title, description) {
+    setDetail({
+      open: true,
+      type,
+      title,
+      description,
+      rows: [],
+      total: 0,
+      limit: 200,
+      summary: null,
+      isLoading: true,
+      error: "",
+    });
+
+    try {
+      const res = await apiClient.get("/dashboard/details", { params: { type } });
+      setDetail((current) =>
+        current.type !== type
+          ? current
+          : {
+              ...current,
+              rows: res.data.rows || [],
+              total: res.data.total || 0,
+              limit: res.data.limit || 200,
+              summary: res.data.summary || null,
+              isLoading: false,
+            }
+      );
+    } catch (err) {
+      setDetail((current) =>
+        current.type !== type
+          ? current
+          : {
+              ...current,
+              isLoading: false,
+              error: err.response?.data?.message || "Unable to load the records for this total.",
+            }
+      );
+    }
+  }
 
   function handleBarangayImportClick() {
     barangayFileInputRef.current?.click();
@@ -319,6 +529,7 @@ export default function DashboardPage() {
               accent
               changePct={stats.trend?.totalTodayChangePct}
               trendLabel="vs yesterday"
+              onClick={() => openDetail("totalToday", "Total Passengers Today", "All passenger trip records created today.")}
             />
             <StatCard
               label="Today's Total Sign-In"
@@ -326,6 +537,7 @@ export default function DashboardPage() {
               icon={ArrowRightCircle}
               sublabel="Surigao → Dapa"
               accentColor="teal"
+              onClick={() => openDetail("signInToday", "Today's Total Sign-In", "Passengers departing from Surigao to Dapa today.")}
             />
             <StatCard
               label="Today's Total Sign-Out"
@@ -333,6 +545,7 @@ export default function DashboardPage() {
               icon={ArrowLeftCircle}
               sublabel="Dapa → Surigao"
               accentColor="blue"
+              onClick={() => openDetail("signOutToday", "Today's Total Sign-Out", "Passengers arriving from Dapa to Surigao today.")}
             />
             <StatCard
               label="Locals vs Tourists Verified"
@@ -344,13 +557,32 @@ export default function DashboardPage() {
                   : "No tourists registered yet"
               }
               accentColor="amber"
+              onClick={() => openDetail("localsTouristsVerified", "Locals vs Tourists Verified", "Today's local passengers and foreign tourists who completed passport and face verification.")}
             />
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <StatCard label="Boarded Today" value={stats.boardedCount} icon={CheckCircle2} accentColor="green" />
-            <StatCard label="Cancelled Today" value={stats.cancelledCount} icon={XCircle} accentColor="red" />
-            <StatCard label="No-Shows Today" value={stats.noShowCount} icon={UserX} accentColor="amber" />
+            <StatCard
+              label="Boarded Today"
+              value={stats.boardedCount}
+              icon={CheckCircle2}
+              accentColor="green"
+              onClick={() => openDetail("boardedCount", "Boarded Today", "Passengers marked as boarded today.")}
+            />
+            <StatCard
+              label="Cancelled Today"
+              value={stats.cancelledCount}
+              icon={XCircle}
+              accentColor="red"
+              onClick={() => openDetail("cancelledCount", "Cancelled Today", "Bookings cancelled today.")}
+            />
+            <StatCard
+              label="No-Shows Today"
+              value={stats.noShowCount}
+              icon={UserX}
+              accentColor="amber"
+              onClick={() => openDetail("noShowCount", "No-Shows Today", "Passengers marked as no-show today.")}
+            />
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -383,6 +615,11 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <DashboardDetailDialog
+        detail={detail}
+        onOpenChange={(open) => setDetail((current) => ({ ...current, open }))}
+      />
     </div>
   );
 }

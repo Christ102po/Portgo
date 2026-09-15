@@ -38,6 +38,7 @@ const MODES = [
 function extractCode(decodedText) {
   try {
     const parsed = JSON.parse(decodedText);
+    if (parsed?.masterCode) return parsed.masterCode;
     if (parsed?.passNumber) return parsed.passNumber;
   } catch {
     // not JSON, fall through

@@ -7,6 +7,7 @@ const { logAudit } = require("../lib/audit");
 const { startOfDay, addDays } = require("../lib/dateRange");
 const { getOrCreateSingleton: getAdvisorySingleton } = require("./advisory.controller");
 const { normalizePhone } = require("../lib/phoneMatch");
+const { parseTimeToMinutes } = require("../lib/timeOfDay");
 
 const MAX_PASS_NUMBER_ATTEMPTS = 3;
 const BOOKABLE_SCHEDULE_STATUSES = ["ACTIVE", "DELAYED"];
@@ -947,6 +948,348 @@ async function resendSms(req, res) {
   res.json({ sms });
 }
 
+
+function currentManilaMinutes(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+  return hour * 60 + minute;
+}
+
+function routeForTransactionType(transactionType) {
+  // Historical enum names: SIGN_IN is outbound/departing from Surigao,
+  // SIGN_OUT is inbound/arriving in Surigao.
+  return transactionType === "SIGN_IN" ? "SURIGAO_TO_DAPA" : "DAPA_TO_SURIGAO";
+}
+
+function circularMinuteDistance(a, b) {
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 1440 - diff);
+}
+
+async function nearestActiveSchedule(shipId, route, now = new Date()) {
+  const schedules = await prisma.schedule.findMany({
+    where: {
+      shipId,
+      route,
+      active: true,
+      status: { in: BOOKABLE_SCHEDULE_STATUSES },
+    },
+    orderBy: { departureTime: "asc" },
+  });
+  if (!schedules.length) return null;
+
+  const nowMinutes = currentManilaMinutes(now);
+  return [...schedules].sort((a, b) => {
+    const aMinutes = parseTimeToMinutes(a.departureTime);
+    const bMinutes = parseTimeToMinutes(b.departureTime);
+    const aDistance = aMinutes == null ? Number.MAX_SAFE_INTEGER : circularMinuteDistance(aMinutes, nowMinutes);
+    const bDistance = bMinutes == null ? Number.MAX_SAFE_INTEGER : circularMinuteDistance(bMinutes, nowMinutes);
+    return aDistance - bDistance;
+  })[0];
+}
+
+async function resolveKioskRegistration(code) {
+  let family = await prisma.familyBooking.findUnique({
+    where: { masterCode: code },
+    include: {
+      trips: {
+        include: { passenger: true, ship: true, schedule: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  let sourceTrip = null;
+  if (!family) {
+    sourceTrip = await prisma.trip.findUnique({
+      where: { passNumber: code },
+      include: { passenger: true, ship: true, schedule: true, familyBooking: true },
+    });
+    if (!sourceTrip) return null;
+    if (sourceTrip.familyBookingId) {
+      family = await prisma.familyBooking.findUnique({
+        where: { id: sourceTrip.familyBookingId },
+        include: {
+          trips: {
+            include: { passenger: true, ship: true, schedule: true },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+    }
+  }
+
+  if (family) {
+    const firstTripByPassenger = new Map();
+    const lastTripByPassenger = new Map();
+    for (const trip of family.trips) {
+      if (!firstTripByPassenger.has(trip.passengerId)) firstTripByPassenger.set(trip.passengerId, trip);
+      lastTripByPassenger.set(trip.passengerId, trip);
+    }
+
+    const firstTrips = [...firstTripByPassenger.values()];
+    const leaderTrip = family.trips.find((trip) => Boolean(trip.qrCodeData)) || firstTrips[0] || null;
+    const ordered = leaderTrip
+      ? [leaderTrip, ...firstTrips.filter((trip) => trip.passengerId !== leaderTrip.passengerId)]
+      : firstTrips;
+
+    return {
+      code,
+      isFamily: true,
+      family,
+      sourceTrip: sourceTrip || leaderTrip,
+      leaderPassengerId: leaderTrip?.passengerId || ordered[0]?.passengerId || null,
+      passengers: ordered.map((trip, index) => ({
+        passenger: trip.passenger,
+        role: index === 0 ? "LEADER" : "MEMBER",
+        lastTrip: lastTripByPassenger.get(trip.passengerId) || trip,
+      })),
+    };
+  }
+
+  return {
+    code,
+    isFamily: false,
+    family: null,
+    sourceTrip,
+    leaderPassengerId: sourceTrip.passengerId,
+    passengers: [{ passenger: sourceTrip.passenger, role: "LEADER", lastTrip: sourceTrip }],
+  };
+}
+
+async function kioskProfile(req, res) {
+  const code = String(req.query.query || "").trim();
+  if (!code) return res.status(400).json({ message: "QR or pass code is required" });
+
+  const registration = await resolveKioskRegistration(code);
+  if (!registration) return res.status(404).json({ message: "No PORTGO registration was found for this QR code." });
+
+  const leader = registration.passengers.find((item) => item.role === "LEADER") || registration.passengers[0];
+  const lastTrip = leader?.lastTrip || null;
+
+  res.json({
+    serverTime: new Date().toISOString(),
+    timeZone: "Asia/Manila",
+    registration: {
+      code,
+      isFamily: registration.isFamily,
+      familyMasterCode: registration.family?.masterCode || null,
+      headFullName: registration.family?.headFullName || leader?.passenger?.fullName || null,
+      passengerCount: registration.passengers.length,
+      passengers: registration.passengers.map((item) => ({
+        id: item.passenger.id,
+        fullName: item.passenger.fullName,
+        passengerType: item.passenger.passengerType,
+        role: item.role,
+      })),
+      lastTrip: lastTrip
+        ? {
+            transactionType: lastTrip.transactionType,
+            shipId: lastTrip.shipId,
+            shipName: lastTrip.ship?.name || null,
+            scheduleId: lastTrip.scheduleId,
+            route: lastTrip.schedule?.route || null,
+            departureTime: lastTrip.schedule?.departureTime || null,
+            accommodationClass: lastTrip.accommodationClass || "ECONOMY",
+            status: lastTrip.status,
+          }
+        : null,
+    },
+  });
+}
+
+async function kioskTime(req, res) {
+  res.json({ serverTime: new Date().toISOString(), timeZone: "Asia/Manila" });
+}
+
+async function recordKioskTrip(req, res) {
+  const { code, transactionType, shipId } = req.body;
+  let { accommodationClass } = req.body;
+  const registration = await resolveKioskRegistration(String(code || "").trim());
+  if (!registration) return res.status(404).json({ message: "No PORTGO registration was found for this QR code." });
+
+  const ship = await prisma.ship.findUnique({ where: { id: shipId }, include: { classes: true } });
+  if (!ship || !ship.active) return res.status(400).json({ message: "Selected ship is not currently available." });
+
+  if (!ship.classes.length) {
+    accommodationClass = "ECONOMY";
+  } else if (!accommodationClass || !ship.classes.some((item) => item.className === accommodationClass)) {
+    return res.status(400).json({ message: "Select an accommodation type offered by this ship." });
+  }
+
+  const route = routeForTransactionType(transactionType);
+  const now = new Date();
+  const schedule = await nearestActiveSchedule(shipId, route, now);
+  if (!schedule) {
+    return res.status(409).json({
+      message: "No active schedule is available for this ship and trip direction. Please ask port staff for assistance.",
+    });
+  }
+
+  const passengerIds = registration.passengers.map((item) => item.passenger.id);
+  const partySize = passengerIds.length;
+
+  // Prevent a camera/manual double-submit from creating a second movement
+  // immediately after a successful kiosk scan.
+  const recentCutoff = new Date(now.getTime() - 5 * 60 * 1000);
+  const recentMovement = await prisma.trip.findFirst({
+    where: {
+      passengerId: registration.leaderPassengerId,
+      shipId: ship.id,
+      scheduleId: schedule.id,
+      transactionType,
+      status: "BOARDED",
+      boardedAt: { gte: recentCutoff },
+    },
+    orderBy: { boardedAt: "desc" },
+  });
+  if (recentMovement) {
+    return res.status(409).json({
+      code: "RECENT_KIOSK_SCAN",
+      message: "This trip was already recorded in the last few minutes. Please do not scan the same trip twice.",
+    });
+  }
+
+  const activeTrips = await prisma.trip.findMany({
+    where: { passengerId: { in: passengerIds }, status: "ACTIVE" },
+    include: { schedule: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const activeTripByPassenger = new Map();
+  for (const passengerId of passengerIds) {
+    const trips = activeTrips.filter((trip) => trip.passengerId === passengerId);
+    const matchingRoute = trips.find((trip) => trip.schedule?.route === route);
+    activeTripByPassenger.set(passengerId, matchingRoute || trips[0] || null);
+  }
+
+  const reusableTripIds = [...activeTripByPassenger.values()].filter(Boolean).map((trip) => trip.id);
+  const classConfig = ship.classes.find((item) => item.className === accommodationClass) || null;
+
+  const updatedTrips = await prisma.$transaction(async (tx) => {
+    const totalBooked = await tx.trip.count({
+      where: {
+        scheduleId: schedule.id,
+        status: { in: ACTIVE_TRIP_STATUSES },
+        ...(reusableTripIds.length ? { id: { notIn: reusableTripIds } } : {}),
+      },
+    });
+    if (totalBooked + partySize > ship.capacity) {
+      const err = new Error(`Only ${Math.max(0, ship.capacity - totalBooked)} seat(s) remain on this sailing.`);
+      err.status = 409;
+      throw err;
+    }
+
+    if (classConfig) {
+      const classBooked = await tx.trip.count({
+        where: {
+          scheduleId: schedule.id,
+          accommodationClass,
+          status: { in: ACTIVE_TRIP_STATUSES },
+          ...(reusableTripIds.length ? { id: { notIn: reusableTripIds } } : {}),
+        },
+      });
+      if (classBooked + partySize > classConfig.capacity) {
+        const err = new Error(`Not enough ${accommodationClass.replace(/_/g, " ")} seats remain for this party.`);
+        err.status = 409;
+        throw err;
+      }
+    }
+
+    const rows = [];
+    for (const item of registration.passengers) {
+      const existing = activeTripByPassenger.get(item.passenger.id);
+      if (existing) {
+        rows.push(
+          await tx.trip.update({
+            where: { id: existing.id },
+            data: {
+              transactionType,
+              shipId: ship.id,
+              scheduleId: schedule.id,
+              accommodationClass,
+              status: "BOARDED",
+              boardedAt: now,
+              statusUpdatedAt: now,
+              // Trip records represent actual kiosk movements. Moving the
+              // planned ACTIVE trip timestamp to scan time keeps dashboard
+              // totals and reports aligned with the real port movement.
+              createdAt: now,
+            },
+            include: { passenger: true, ship: true, schedule: true },
+          })
+        );
+        continue;
+      }
+
+      const lastTrip = item.lastTrip;
+      rows.push(
+        await tx.trip.create({
+          data: {
+            passNumber: generatePassNumber(),
+            // Existing QR remains the passenger identity token. New movement
+            // rows do not issue another QR; group members never receive one.
+            qrCodeData:
+              item.role === "LEADER"
+                ? registration.family?.qrCodeData || registration.sourceTrip?.qrCodeData || ""
+                : "",
+            transactionType,
+            purpose: lastTrip?.purpose || "OTHER",
+            status: "BOARDED",
+            accommodationClass,
+            familyBookingId: registration.family?.id || null,
+            passengerId: item.passenger.id,
+            shipId: ship.id,
+            scheduleId: schedule.id,
+            boardedAt: now,
+            statusUpdatedAt: now,
+          },
+          include: { passenger: true, ship: true, schedule: true },
+        })
+      );
+    }
+    return rows;
+  }).catch((err) => {
+    if (err.status) return Promise.reject(err);
+    throw err;
+  });
+
+  await logAudit(
+    req,
+    "KIOSK_QR_TRIP_RECORDED",
+    `${registration.isFamily ? `${registration.family.headFullName} group (${partySize})` : updatedTrips[0].passenger.fullName} recorded ${transactionType === "SIGN_IN" ? "outbound" : "inbound"} on ${ship.name} at ${now.toISOString()}`
+  );
+
+  res.json({
+    success: true,
+    scannedAt: now.toISOString(),
+    timeZone: "Asia/Manila",
+    partySize,
+    transactionType,
+    accommodationClass,
+    ship: { id: ship.id, name: ship.name, code: ship.code },
+    schedule: {
+      id: schedule.id,
+      route: schedule.route,
+      departureTime: schedule.departureTime,
+      voyageNumber: schedule.voyageNumber,
+      gateNumber: schedule.gateNumber,
+    },
+    passengers: updatedTrips.map((trip) => ({
+      id: trip.passenger.id,
+      fullName: trip.passenger.fullName,
+      tripId: trip.id,
+      passNumber: trip.passNumber,
+    })),
+  });
+}
+
 async function lookup(req, res) {
   const { query } = req.query;
   if (!query || !query.trim()) {
@@ -986,4 +1329,4 @@ async function lookup(req, res) {
   });
 }
 
-module.exports = { create, search, rebook, lookup, resendSms };
+module.exports = { create, search, rebook, lookup, resendSms, kioskProfile, kioskTime, recordKioskTrip };

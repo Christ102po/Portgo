@@ -211,6 +211,13 @@ const bookingLookupSchema = z.object({
   query: z.string().min(4),
 });
 
+const kioskTripScanSchema = z.object({
+  code: z.string().trim().min(4),
+  transactionType: z.enum(["SIGN_IN", "SIGN_OUT"]),
+  shipId: z.string().min(1),
+  accommodationClass: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]).optional().nullable(),
+});
+
 const barangaySearchSchema = z.object({
   query: z.string().min(1),
 });
@@ -331,6 +338,7 @@ module.exports = {
   advisoryUpdateSchema,
   advisoryCancelAllSchema,
   bookingLookupSchema,
+  kioskTripScanSchema,
   barangaySearchSchema,
   barangayImportSchema,
   reportsQuerySchema,

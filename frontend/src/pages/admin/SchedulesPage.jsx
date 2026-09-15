@@ -15,6 +15,7 @@ import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Input } from "../../components/ui/Input";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { Switch } from "../../components/ui/Switch";
 import { ScheduleFormDialog } from "../../components/admin/ScheduleFormDialog";
 import { CancelScheduleModal } from "../../components/admin/CancelScheduleModal";
 import { DelayScheduleModal } from "../../components/admin/DelayScheduleModal";
@@ -34,14 +35,16 @@ const CANCEL_BADGE = {
 
 const TABS = [
   { value: "ALL", label: "All" },
-  { value: "IN_ROTATION", label: "In Rotation" },
+  { value: "AVAILABLE", label: "Available" },
+  { value: "UNAVAILABLE", label: "Unavailable" },
   { value: "DELAYED", label: "Delayed" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
 function matchesTab(s, tab) {
   if (tab === "ALL") return true;
-  if (tab === "IN_ROTATION") return s.active && s.status === "ACTIVE";
+  if (tab === "AVAILABLE") return s.active && ["ACTIVE", "DELAYED"].includes(s.status);
+  if (tab === "UNAVAILABLE") return !s.active;
   if (tab === "DELAYED") return s.status === "DELAYED";
   if (tab === "CANCELLED") return ["CANCELLED_WEATHER", "CANCELLED_MAINTENANCE", "MAINTENANCE"].includes(s.status);
   return true;
@@ -138,16 +141,38 @@ export default function SchedulesPage() {
     await load();
   }
 
-  async function handleDeactivate(schedule) {
-    await apiClient.delete(`/schedules/${schedule.id}`);
-    showToast({ title: "Schedule deactivated", variant: "info" });
-    await load();
+  async function handleAvailability(schedule, nextActive) {
+    try {
+      await apiClient.put(`/schedules/${schedule.id}`, { active: nextActive });
+      showToast({
+        title: nextActive ? "Schedule is now available" : "Schedule is now unavailable",
+        description: nextActive
+          ? "Passengers can select this sailing when its operational status permits booking."
+          : "This sailing is hidden from passenger registration but remains in admin records.",
+        variant: nextActive ? "success" : "info",
+      });
+      await load();
+    } catch (err) {
+      showToast({ title: "Unable to update availability", description: err.response?.data?.message, variant: "error" });
+    }
   }
 
-  async function handleActivate(schedule) {
-    await apiClient.put(`/schedules/${schedule.id}`, { active: true });
-    showToast({ title: "Schedule activated", variant: "success" });
-    await load();
+  async function handleDelete(schedule) {
+    const ok = window.confirm(
+      `Delete ${schedule.ship?.name || "this ship"} — ${schedule.departureTime}?\n\nUnused schedules are permanently deleted. Schedules with passenger records cannot be deleted and should be marked Unavailable instead.`
+    );
+    if (!ok) return;
+    try {
+      await apiClient.delete(`/schedules/${schedule.id}`);
+      showToast({ title: "Schedule deleted", variant: "success" });
+      await load();
+    } catch (err) {
+      showToast({
+        title: "Schedule cannot be deleted",
+        description: err.response?.data?.message || "Mark the schedule Unavailable instead.",
+        variant: "error",
+      });
+    }
   }
 
   async function handleCancelTrip({ category, reason, reassignToScheduleId, markForRefund }) {
@@ -188,11 +213,7 @@ export default function SchedulesPage() {
   async function handleBulkAction(action) {
     const ids = Array.from(selected);
     await Promise.all(
-      ids.map((id) =>
-        action === "activate"
-          ? apiClient.put(`/schedules/${id}`, { active: true })
-          : apiClient.delete(`/schedules/${id}`)
-      )
+      ids.map((id) => apiClient.put(`/schedules/${id}`, { active: action === "activate" }))
     );
     showToast({
       title: `${ids.length} schedule${ids.length === 1 ? "" : "s"} ${action === "activate" ? "activated" : "deactivated"}`,
@@ -207,7 +228,7 @@ export default function SchedulesPage() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-graphite">Schedules</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage departure times for each route.</p>
+          <p className="mt-1 text-sm text-slate-500">Manage sailing times, passenger availability, and operational status for each route.</p>
         </div>
         <Button onClick={openCreate} disabled={ships.length === 0}>
           <Plus className="h-4 w-4" />
@@ -278,7 +299,7 @@ export default function SchedulesPage() {
               <th className="px-4 py-4 text-center">Departure</th>
               <th className="px-4 py-4 text-center">Days</th>
               <th className="px-4 py-4 text-center">Seats</th>
-              <th className="px-4 py-4 text-center">Status</th>
+              <th className="px-4 py-4 text-center">Passenger Availability</th>
               <th className="px-4 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -336,17 +357,27 @@ export default function SchedulesPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <Badge variant={s.active ? "active" : "neutral"}>
-                          {s.active ? "In Rotation" : "Deactivated"}
-                        </Badge>
-                        {s.status !== "ACTIVE" && cancelBadge && (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+                          <Switch
+                            checked={s.active}
+                            onCheckedChange={(checked) => handleAvailability(s, checked)}
+                            aria-label={`${s.ship?.name || "Schedule"} availability`}
+                            className="h-6 w-10 [&>span]:h-4 [&>span]:w-4 data-[state=checked]:[&>span]:translate-x-5"
+                          />
+                          <span className={cn("text-[11px] font-bold", s.active ? "text-emerald-700" : "text-slate-500")}>
+                            {s.active ? "Available" : "Unavailable"}
+                          </span>
+                        </div>
+                        {s.status !== "ACTIVE" && cancelBadge ? (
                           <Badge
                             variant={cancelBadge.variant}
                             title={s.status === "DELAYED" ? s.delayReason : s.cancellationReason}
                           >
                             {s.status === "DELAYED" ? `Delayed +${s.delayMinutes}m` : cancelBadge.label}
                           </Badge>
+                        ) : (
+                          <Badge variant="outline">Operational</Badge>
                         )}
                       </div>
                     </td>
@@ -400,21 +431,15 @@ export default function SchedulesPage() {
                         <Button variant="outline" size="sm" className="rounded-full" onClick={() => openEdit(s)} title="Edit">
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        {s.active ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                            onClick={() => handleDeactivate(s)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button variant="accent" size="sm" className="rounded-full" onClick={() => handleActivate(s)}>
-                            Activate
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                          onClick={() => handleDelete(s)}
+                          title="Delete unused schedule"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

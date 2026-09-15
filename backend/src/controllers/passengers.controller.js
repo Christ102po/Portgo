@@ -14,6 +14,26 @@ const ACTIVE_TRIP_STATUSES = ["ACTIVE", "BOARDED"];
 const DUPLICATE_REGISTRATION_MESSAGE =
   "Duplicate Registration Detected: You already have an active pass for this exact vessel and departure time today. Use 'Find My Pass' to retrieve your QR code, or choose a different schedule.";
 
+async function resolveAccommodationConfig(shipId, accommodationClass) {
+  const configured = await prisma.shipClass.findMany({ where: { shipId } });
+  if (configured.length === 0) {
+    if (accommodationClass !== "ECONOMY") {
+      const err = new Error("This vessel offers Economy seating only. Please select Economy.");
+      err.status = 400;
+      throw err;
+    }
+    return { shipClass: null, economyOnly: true };
+  }
+
+  const shipClass = configured.find((item) => item.className === accommodationClass) || null;
+  if (!shipClass) {
+    const err = new Error("The selected accommodation type is not offered by this vessel.");
+    err.status = 400;
+    throw err;
+  }
+  return { shipClass, economyOnly: false };
+}
+
 // Guaranteed-to-work demo lookup: searching "09123456789" (in any format —
 // with dashes, +63, or bare) always surfaces a real, rebookable profile even
 // against an empty/freshly-reset database, so live demos/rehearsals never
@@ -96,8 +116,10 @@ async function createPrimaryWithMembers(req, res) {
   const ship = await prisma.ship.findUnique({ where: { id: data.shipId } });
   const schedule = await prisma.schedule.findUnique({ where: { id: data.scheduleId } });
   if (!ship) return res.status(400).json({ message: "Selected ship does not exist" });
+  if (!ship.active) return res.status(400).json({ message: "Selected ship is not currently active" });
   if (!schedule) return res.status(400).json({ message: "Selected schedule does not exist" });
-  if (!BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
+  if (schedule.shipId !== data.shipId) return res.status(400).json({ message: "Selected schedule does not belong to the selected ship" });
+  if (!schedule.active || !BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
     return res.status(400).json({ message: "Selected schedule is not currently available for booking" });
   }
 
@@ -109,17 +131,17 @@ async function createPrimaryWithMembers(req, res) {
   }
 
   let shipClass = null;
-  if (data.accommodationClass) {
-    shipClass = await prisma.shipClass.findUnique({
-      where: { shipId_className: { shipId: data.shipId, className: data.accommodationClass } },
-    });
-    if (shipClass) {
-      const classBooked = await getClassBookedCount(data.scheduleId, data.accommodationClass);
-      if (classBooked + groupSize > shipClass.capacity) {
-        return res.status(409).json({
-          message: `Not enough ${data.accommodationClass.replace("_", " ")} seats remain for all ${groupSize} travelers.`,
-        });
-      }
+  try {
+    ({ shipClass } = await resolveAccommodationConfig(data.shipId, data.accommodationClass));
+  } catch (err) {
+    return res.status(err.status || 400).json({ message: err.message });
+  }
+  if (shipClass) {
+    const classBooked = await getClassBookedCount(data.scheduleId, data.accommodationClass);
+    if (classBooked + groupSize > shipClass.capacity) {
+      return res.status(409).json({
+        message: `Not enough ${data.accommodationClass.replace("_", " ")} seats remain for all ${groupSize} travelers.`,
+      });
     }
   }
 
@@ -438,8 +460,10 @@ async function create(req, res) {
   const ship = await prisma.ship.findUnique({ where: { id: shipId } });
   const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId } });
   if (!ship) return res.status(400).json({ message: "Selected ship does not exist" });
+  if (!ship.active) return res.status(400).json({ message: "Selected ship is not currently active" });
   if (!schedule) return res.status(400).json({ message: "Selected schedule does not exist" });
-  if (!BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
+  if (schedule.shipId !== shipId) return res.status(400).json({ message: "Selected schedule does not belong to the selected ship" });
+  if (!schedule.active || !BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
     return res.status(400).json({ message: "Selected schedule is not currently available for booking" });
   }
 
@@ -449,17 +473,17 @@ async function create(req, res) {
   }
 
   let shipClass = null;
-  if (accommodationClass) {
-    shipClass = await prisma.shipClass.findUnique({
-      where: { shipId_className: { shipId, className: accommodationClass } },
-    });
-    if (shipClass) {
-      const classBooked = await getClassBookedCount(scheduleId, accommodationClass);
-      if (classBooked >= shipClass.capacity) {
-        return res.status(409).json({
-          message: `The ${accommodationClass.replace("_", " ")} class is fully booked on this schedule. Please choose another class.`,
-        });
-      }
+  try {
+    ({ shipClass } = await resolveAccommodationConfig(shipId, accommodationClass));
+  } catch (err) {
+    return res.status(err.status || 400).json({ message: err.message });
+  }
+  if (shipClass) {
+    const classBooked = await getClassBookedCount(scheduleId, accommodationClass);
+    if (classBooked >= shipClass.capacity) {
+      return res.status(409).json({
+        message: `The ${accommodationClass.replace("_", " ")} class is fully booked on this schedule. Please choose another class.`,
+      });
     }
   }
 

@@ -73,16 +73,24 @@ async function create(req, res) {
   const ship = await prisma.ship.findUnique({ where: { id: shipId } });
   const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId } });
   if (!ship) return res.status(400).json({ message: "Selected ship does not exist" });
+  if (!ship.active) return res.status(400).json({ message: "Selected ship is not currently active" });
   if (!schedule) return res.status(400).json({ message: "Selected schedule does not exist" });
-  if (!BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
+  if (schedule.shipId !== shipId) return res.status(400).json({ message: "Selected schedule does not belong to the selected ship" });
+  if (!schedule.active || !BOOKABLE_SCHEDULE_STATUSES.includes(schedule.status)) {
     return res.status(400).json({ message: "Selected schedule is not currently available for booking" });
   }
 
+  const configuredClasses = await prisma.shipClass.findMany({ where: { shipId } });
   let shipClass = null;
-  if (accommodationClass) {
-    shipClass = await prisma.shipClass.findUnique({
-      where: { shipId_className: { shipId, className: accommodationClass } },
-    });
+  if (configuredClasses.length === 0) {
+    if (accommodationClass !== "ECONOMY") {
+      return res.status(400).json({ message: "This vessel offers Economy seating only. Please select Economy." });
+    }
+  } else {
+    shipClass = configuredClasses.find((item) => item.className === accommodationClass) || null;
+    if (!shipClass) {
+      return res.status(400).json({ message: "The selected accommodation type is not offered by this vessel." });
+    }
   }
 
   let result = null;

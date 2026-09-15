@@ -125,10 +125,16 @@ const familyBookingCreateSchema = z.object({
   }
 });
 
+const accommodationClassConfigSchema = z.object({
+  className: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
+  capacity: z.coerce.number().int().min(0),
+});
+
 const shipCreateSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1),
   capacity: z.coerce.number().int().min(1).optional(),
+  classes: z.array(accommodationClassConfigSchema).optional(),
 });
 
 const shipUpdateSchema = z.object({
@@ -136,15 +142,11 @@ const shipUpdateSchema = z.object({
   code: z.string().min(1).optional(),
   capacity: z.coerce.number().int().min(1).optional(),
   active: z.boolean().optional(),
+  classes: z.array(accommodationClassConfigSchema).optional(),
 });
 
 const shipClassesUpdateSchema = z.object({
-  classes: z.array(
-    z.object({
-      className: z.enum(["ECONOMY", "TOURIST_AIRCON", "BUSINESS"]),
-      capacity: z.coerce.number().int().min(0),
-    })
-  ),
+  classes: z.array(accommodationClassConfigSchema),
 });
 
 const scheduleCreateSchema = z.object({
@@ -154,6 +156,7 @@ const scheduleCreateSchema = z.object({
   shipId: z.string().min(1),
   voyageNumber: z.string().optional().nullable(),
   gateNumber: z.string().optional().nullable(),
+  active: z.boolean().optional(),
 });
 
 const scheduleUpdateSchema = z.object({

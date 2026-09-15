@@ -50,31 +50,34 @@ async function list(req, res) {
     const boardedCount = boardedCounts.get(s.id) || 0;
     const capacity = s.ship.capacity;
     const classBooked = classBookedByschedule.get(s.id) || new Map();
-    const configuredClasses = new Map(s.ship.classes.map((c) => [c.className, c.capacity]));
-    // Every ship always offers all three accommodation classes for selection —
-    // a ShipClass row only exists when the port has configured a sub-capacity
-    // limit for that class; unconfigured classes fall back to the ship's
-    // overall capacity/seatsLeft instead of being hidden from the selector.
-    const classAvailability = ACCOMMODATION_CLASSES.map((className) => {
-      const configuredCapacity = configuredClasses.get(className);
-      const booked = classBooked.get(className) || 0;
-      if (configuredCapacity == null) {
-        return {
-          className,
-          capacity: null,
-          bookedCount: booked,
-          seatsLeft: Math.max(0, capacity - bookedCount),
-          isFull: bookedCount >= capacity,
-        };
-      }
-      return {
-        className,
-        capacity: configuredCapacity,
-        bookedCount: booked,
-        seatsLeft: Math.max(0, configuredCapacity - booked),
-        isFull: booked >= configuredCapacity,
-      };
-    });
+    const configuredClasses = [...s.ship.classes].sort(
+      (a, b) => ACCOMMODATION_CLASSES.indexOf(a.className) - ACCOMMODATION_CLASSES.indexOf(b.className)
+    );
+
+    // No ShipClass rows means the vessel is Economy-only. If the admin
+    // configured accommodation types, expose only those configured types to
+    // the kiosk instead of inventing Economy/Tourist/Business options.
+    const classAvailability = configuredClasses.length
+      ? configuredClasses.map((configured) => {
+          const booked = classBooked.get(configured.className) || 0;
+          return {
+            className: configured.className,
+            capacity: configured.capacity,
+            bookedCount: booked,
+            seatsLeft: Math.max(0, configured.capacity - booked),
+            isFull: booked >= configured.capacity,
+          };
+        })
+      : [
+          {
+            className: "ECONOMY",
+            capacity,
+            bookedCount,
+            seatsLeft: Math.max(0, capacity - bookedCount),
+            isFull: bookedCount >= capacity,
+            economyOnly: true,
+          },
+        ];
     return {
       ...s,
       bookedCount,
@@ -91,12 +94,20 @@ async function list(req, res) {
 }
 
 async function create(req, res) {
-  const { route, departureTime, daysOfWeek, shipId, voyageNumber, gateNumber } = req.body;
+  const { route, departureTime, daysOfWeek, shipId, voyageNumber, gateNumber, active } = req.body;
   if (!route || !departureTime || !daysOfWeek || !shipId) {
     return res.status(400).json({ message: "route, departureTime, daysOfWeek and shipId are required" });
   }
   const schedule = await prisma.schedule.create({
-    data: { route, departureTime, daysOfWeek, shipId, voyageNumber: voyageNumber || null, gateNumber: gateNumber || null },
+    data: {
+      route,
+      departureTime,
+      daysOfWeek,
+      shipId,
+      voyageNumber: voyageNumber || null,
+      gateNumber: gateNumber || null,
+      ...(active !== undefined ? { active } : {}),
+    },
   });
   await logAudit(req, "SCHEDULE_CREATED", `Created schedule ${departureTime} (${route}) for ship ${shipId}`);
   res.status(201).json({ schedule });
@@ -123,9 +134,24 @@ async function update(req, res) {
 
 async function remove(req, res) {
   const { id } = req.params;
-  const schedule = await prisma.schedule.update({ where: { id }, data: { active: false } });
-  await logAudit(req, "SCHEDULE_DEACTIVATED", `Deactivated schedule ${schedule.departureTime} (${schedule.id})`);
-  res.json({ schedule });
+  const schedule = await prisma.schedule.findUnique({ where: { id }, include: { ship: true } });
+  if (!schedule) return res.status(404).json({ message: "Schedule not found" });
+
+  const tripCount = await prisma.trip.count({ where: { scheduleId: id } });
+  if (tripCount > 0) {
+    return res.status(409).json({
+      code: "SCHEDULE_HAS_RECORDS",
+      message: `This schedule has ${tripCount} passenger record${tripCount === 1 ? "" : "s"} and cannot be permanently deleted. Set it to Unavailable instead so historical records remain intact.`,
+    });
+  }
+
+  await prisma.schedule.delete({ where: { id } });
+  await logAudit(
+    req,
+    "SCHEDULE_DELETED",
+    `Permanently deleted unused schedule ${schedule.departureTime} (${schedule.id}) for ${schedule.ship?.name || "ship"}`
+  );
+  res.json({ deleted: true, id });
 }
 
 async function reassignTrip(trip, targetSchedule) {

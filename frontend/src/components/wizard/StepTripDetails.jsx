@@ -19,16 +19,42 @@ const CLASS_ICONS = {
   BUSINESS: Star,
 };
 
-function AccommodationClassSelector({ classAvailability, value, onSelect, groupSize = 1 }) {
+function AccommodationClassSelector({ classAvailability = [], value, onSelect, groupSize = 1 }) {
+  const offered = classAvailability
+    .map((availability) => ({
+      availability,
+      meta: ACCOMMODATION_CLASSES.find((item) => item.value === availability.className),
+    }))
+    .filter((item) => item.meta);
+
+  if (offered.length === 1 && offered[0].availability.economyOnly) {
+    const { availability, meta } = offered[0];
+    return (
+      <div className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">
+          <Armchair className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-900">Economy seating</p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+            This vessel operates Economy seating only, so no accommodation selection is needed.
+          </p>
+          <p className="mt-1 text-xs font-semibold text-emerald-700">
+            {availability.seatsLeft} of {availability.capacity} seats left
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Type of Accommodation / Seat Class <span className="text-red-500">*</span>
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {ACCOMMODATION_CLASSES.map((meta) => {
+      <div className={cn("grid grid-cols-1 gap-2", offered.length > 1 && "sm:grid-cols-2", offered.length > 2 && "lg:grid-cols-3")}>
+        {offered.map(({ meta, availability }) => {
           const Icon = CLASS_ICONS[meta.value] || Armchair;
-          const availability = classAvailability?.find((c) => c.className === meta.value);
           const isFull = !!availability?.isFull;
           const insufficientForGroup = availability?.seatsLeft != null && availability.seatsLeft < groupSize;
           const unavailable = isFull || insufficientForGroup;
@@ -49,17 +75,15 @@ function AccommodationClassSelector({ classAvailability, value, onSelect, groupS
                 {meta.label}
               </span>
               <span className={cn("text-[11px]", selected ? "text-emerald-50/90" : "text-slate-500")}>{meta.subtitle}</span>
-              {availability?.capacity != null && (
-                <span className={cn("text-[11px] font-medium", isFull ? "text-red-600" : selected ? "text-emerald-50" : "text-slate-500")}>
-                  {isFull ? "Full" : insufficientForGroup ? `Needs ${groupSize} seats · only ${availability.seatsLeft} left` : `${availability.seatsLeft} of ${availability.capacity} seats left`}
-                </span>
-              )}
+              <span className={cn("text-[11px] font-medium", isFull ? "text-red-600" : selected ? "text-emerald-50" : "text-slate-500")}>
+                {isFull ? "Full" : insufficientForGroup ? `Needs ${groupSize} seats · only ${availability.seatsLeft} left` : `${availability.seatsLeft} of ${availability.capacity} seats left`}
+              </span>
             </button>
           );
         })}
       </div>
       <p className="mt-2 text-[11px] text-slate-400">
-        Boarding is first-come, first-served within your chosen class — no individual seat assignment.
+        Only accommodation types configured for this vessel are shown. Boarding is first-come, first-served within the selected type.
       </p>
     </div>
   );
@@ -152,6 +176,21 @@ export function StepTripDetails() {
   );
 
   useEffect(() => {
+    if (!selectedSchedule) return;
+    const offered = selectedSchedule.classAvailability || [];
+    if (offered.length === 1) {
+      if (state.accommodationClass !== offered[0].className) {
+        setField("accommodationClass", offered[0].className);
+      }
+      return;
+    }
+    if (state.accommodationClass && !offered.some((item) => item.className === state.accommodationClass)) {
+      setField("accommodationClass", null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSchedule?.id]);
+
+  useEffect(() => {
     if (!selectedSchedule || selectedSchedule.isFull) return;
     if (selectedSchedule.seatsLeft <= LOW_SEATS_THRESHOLD) {
       showToast({
@@ -173,7 +212,8 @@ export function StepTripDetails() {
     !selectedSchedule.isFull &&
     selectedSchedule.seatsLeft >= groupSize &&
     state.accommodationClass &&
-    (!selectedClassAvailability || selectedClassAvailability.seatsLeft >= groupSize);
+    selectedClassAvailability &&
+    selectedClassAvailability.seatsLeft >= groupSize;
 
   return (
     <div>

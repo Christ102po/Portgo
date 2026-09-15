@@ -48,9 +48,9 @@ const STRINGS = {
   },
   localResident: { en: "Local Resident", tl: "Lokal na Residente", ceb: "Lokal nga Residente" },
   localResidentDescription: {
-    en: "Resident of Surigao or Siargao. Requires a Valid ID or Barangay Clearance.",
-    tl: "Residente ng Surigao o Siargao. Kailangan ng Valid ID o Barangay Clearance.",
-    ceb: "Residente sa Surigao o Siargao. Kinahanglan og Valid ID o Barangay Clearance.",
+    en: "Resident of Surigao or Siargao.",
+    tl: "Residente ng Surigao o Siargao.",
+    ceb: "Residente sa Surigao o Siargao.",
   },
   touristCategory: { en: "Tourist", tl: "Turista", ceb: "Turista" },
   touristCategoryDescription: {

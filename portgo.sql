@@ -1002,6 +1002,44 @@ CREATE TABLE IF NOT EXISTS `watchlist_entries` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `port_guidelines`
+--
+
+DROP TABLE IF EXISTS `port_guidelines`;
+CREATE TABLE IF NOT EXISTS `port_guidelines` (
+  `id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `section` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sortOrder` int NOT NULL DEFAULT '0',
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `port_guidelines_section_active_sortOrder_idx` (`section`,`active`,`sortOrder`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `emergency_hotlines`
+--
+
+DROP TABLE IF EXISTS `emergency_hotlines`;
+CREATE TABLE IF NOT EXISTS `emergency_hotlines` (
+  `id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `number` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sortOrder` int NOT NULL DEFAULT '0',
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `emergency_hotlines_active_sortOrder_idx` (`active`,`sortOrder`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `_prisma_migrations`
 --
 

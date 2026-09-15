@@ -28,6 +28,7 @@ const devRoutes = require("./routes/dev.routes");
 const watchlistRoutes = require("./routes/watchlist.routes");
 const weatherRoutes = require("./routes/weather.routes");
 const barangayResidentsRoutes = require("./routes/barangayResidents.routes");
+const portInformationRoutes = require("./routes/portInformation.routes");
 
 const app = express();
 
@@ -88,6 +89,7 @@ app.use("/api/dev", devRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/barangay-residents", barangayResidentsRoutes);
+app.use("/api/port-information", portInformationRoutes);
 
 // In production Railway builds the Vite app into frontend/dist. Serving it
 // here keeps the whole system on one HTTPS domain, which simplifies mobile use,

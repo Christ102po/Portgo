@@ -13,10 +13,9 @@ import {
   ClipboardCheck,
   ShieldCheck,
   ShieldAlert,
+  ShieldQuestion,
   Users,
-  Car,
   Monitor,
-  BookUser,
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
@@ -45,8 +44,6 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin/ships", label: "Ships", icon: Ship, roles: ALL_STAFF },
       { to: "/admin/schedules", label: "Schedules", icon: CalendarClock, roles: ALL_STAFF },
-      { to: "/admin/vehicles", label: "Vehicles & Cargo", icon: Car, roles: ALL_STAFF },
-      { to: "/admin/barangay-masterlist", label: "Barangay Masterlist", icon: BookUser, roles: ALL_STAFF },
       { to: "/display", label: "Live Terminal Board", icon: Monitor, roles: [...ALL_STAFF, "TICKETING_OFFICER", "GATE_SCANNER"], external: true },
     ],
   },
@@ -55,6 +52,7 @@ const NAV_GROUPS = [
     icon: BarChart3,
     items: [
       { to: "/admin/reports", label: "Reports & Analytics", icon: BarChart3, roles: ALL_STAFF },
+      { to: "/admin/port-information", label: "Guidelines & Hotlines", icon: ShieldQuestion, roles: ALL_STAFF },
       { to: "/admin/watchlist", label: "Security Watchlist", icon: ShieldAlert, roles: ["SUPER_ADMIN", "ADMIN"] },
       { to: "/admin/audit-logs", label: "Audit Logs", icon: ShieldCheck, roles: ["SUPER_ADMIN"] },
       { to: "/admin/staff", label: "Manage Staff", icon: Users, roles: ["SUPER_ADMIN"] },

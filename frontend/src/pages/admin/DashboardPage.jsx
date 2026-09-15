@@ -12,8 +12,6 @@ import {
   Search,
   Sparkles,
   Printer,
-  UploadCloud,
-  Download,
 } from "lucide-react";
 import { StatCard } from "../../components/admin/StatCard";
 import { RecentActivityPanel } from "../../components/admin/RecentActivityPanel";
@@ -28,7 +26,6 @@ import { LocalTouristChart } from "../../components/admin/charts/LocalTouristCha
 import { PeakHoursChart } from "../../components/admin/charts/PeakHoursChart";
 import { apiClient, downloadWithAuth } from "../../lib/apiClient";
 import { verificationBadge } from "../../lib/verification";
-import { downloadBarangayCsvTemplate } from "../../lib/barangayCsvTemplate";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
 
@@ -312,7 +309,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isPrintingReport, setIsPrintingReport] = useState(false);
-  const [isImportingBarangay, setIsImportingBarangay] = useState(false);
   const [detail, setDetail] = useState({
     open: false,
     type: null,
@@ -325,7 +321,6 @@ export default function DashboardPage() {
     isLoading: false,
     error: "",
   });
-  const barangayFileInputRef = useRef(null);
   const { admin } = useAuth();
   const { showToast } = useToast();
   const canSeed = admin?.role === "SUPER_ADMIN" || admin?.role === "ADMIN";
@@ -369,38 +364,6 @@ export default function DashboardPage() {
             }
       );
     }
-  }
-
-  function handleBarangayImportClick() {
-    barangayFileInputRef.current?.click();
-  }
-
-  function handleBarangayFileSelected(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      setIsImportingBarangay(true);
-      try {
-        const res = await apiClient.post("/barangay-residents/import", { csvText: reader.result });
-        showToast({
-          title: "Barangay Masterlist imported",
-          description: `${res.data.imported} resident record(s) loaded — replaced the previous list.`,
-          variant: "success",
-        });
-      } catch (err) {
-        showToast({
-          title: "Import failed",
-          description: err.response?.data?.message || "Please check the CSV format and try again.",
-          variant: "error",
-        });
-      } finally {
-        setIsImportingBarangay(false);
-      }
-    };
-    reader.readAsText(file);
   }
 
   async function handlePrintExecutiveReport() {
@@ -481,34 +444,6 @@ export default function DashboardPage() {
               <Sparkles className="h-4 w-4" />
               {isSeeding ? "Seeding..." : "Seed Sample Passenger Logs"}
             </Button>
-          )}
-          {canSeed && (
-            <>
-              <Button
-                variant="outline"
-                onClick={downloadBarangayCsvTemplate}
-                title="Download a sample CSV template for the Barangay Resident Masterlist"
-              >
-                <Download className="h-4 w-4" />
-                Sample CSV Template
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleBarangayImportClick}
-                disabled={isImportingBarangay}
-                title="Upload an LGU Barangay Resident Masterlist CSV — replaces the current list"
-              >
-                <UploadCloud className="h-4 w-4" />
-                {isImportingBarangay ? "Importing..." : "Upload Barangay CSV Masterlist"}
-              </Button>
-              <input
-                ref={barangayFileInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                className="hidden"
-                onChange={handleBarangayFileSelected}
-              />
-            </>
           )}
         </div>
       </header>

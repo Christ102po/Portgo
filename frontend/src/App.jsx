@@ -6,17 +6,16 @@ import LoginPage from "./pages/admin/LoginPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import RecordsPage from "./pages/admin/RecordsPage";
 import ManifestDashboardPage from "./pages/admin/ManifestDashboardPage";
-import BarangayMasterlistPage from "./pages/admin/BarangayMasterlistPage";
 import TicketingDeskPage from "./pages/admin/TicketingDeskPage";
 import GateScannerPage from "./pages/admin/GateScannerPage";
 import GatePassScannerPage from "./pages/GatePassScannerPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import ShipsPage from "./pages/admin/ShipsPage";
 import SchedulesPage from "./pages/admin/SchedulesPage";
-import VehiclesPage from "./pages/admin/VehiclesPage";
 import AuditLogsPage from "./pages/admin/AuditLogsPage";
 import WatchlistPage from "./pages/admin/WatchlistPage";
 import StaffPage from "./pages/admin/StaffPage";
+import PortInformationPage from "./pages/admin/PortInformationPage";
 import DisplayBoardPage from "./pages/DisplayBoardPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -45,13 +44,12 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="records" element={<RecordsPage />} />
         <Route path="manifest" element={<ManifestDashboardPage />} />
-        <Route path="barangay-masterlist" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN"]}><BarangayMasterlistPage /></RequireRole>} />
         <Route path="ticketing" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "TICKETING_OFFICER"]}><TicketingDeskPage /></RequireRole>} />
         <Route path="gate-scanner" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "GATE_SCANNER"]}><GateScannerPage /></RequireRole>} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="port-information" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN"]}><PortInformationPage /></RequireRole>} />
         <Route path="ships" element={<ShipsPage />} />
         <Route path="schedules" element={<SchedulesPage />} />
-        <Route path="vehicles" element={<VehiclesPage />} />
         <Route path="audit-logs" element={<RequireRole roles={["SUPER_ADMIN"]}><AuditLogsPage /></RequireRole>} />
         <Route path="watchlist" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN"]}><WatchlistPage /></RequireRole>} />
         <Route path="staff" element={<RequireRole roles={["SUPER_ADMIN"]}><StaffPage /></RequireRole>} />

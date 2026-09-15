@@ -324,3 +324,30 @@ model BarangayResident {
   @@index([fullName])
   @@map("barangay_residents")
 }
+
+model PortGuideline {
+  id        String   @id @default(cuid())
+  section   String
+  text      String   @db.Text
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([section, active, sortOrder])
+  @@map("port_guidelines")
+}
+
+model EmergencyHotline {
+  id        String   @id @default(cuid())
+  label     String
+  number    String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+  @@map("emergency_hotlines")
+}
+

@@ -274,6 +274,35 @@ const watchlistUpdateSchema = z.object({
   active: z.boolean().optional(),
 });
 
+
+const portGuidelineCreateSchema = z.object({
+  section: z.enum(["PASSENGER_REMINDERS", "PROHIBITED_ITEMS", "PRIORITY_ASSISTANCE"]),
+  text: z.string().trim().min(1).max(1000),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  active: z.boolean().optional(),
+});
+
+const portGuidelineUpdateSchema = z.object({
+  section: z.enum(["PASSENGER_REMINDERS", "PROHIBITED_ITEMS", "PRIORITY_ASSISTANCE"]).optional(),
+  text: z.string().trim().min(1).max(1000).optional(),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  active: z.boolean().optional(),
+});
+
+const emergencyHotlineCreateSchema = z.object({
+  label: z.string().trim().min(1).max(160),
+  number: z.string().trim().min(1).max(80),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  active: z.boolean().optional(),
+});
+
+const emergencyHotlineUpdateSchema = z.object({
+  label: z.string().trim().min(1).max(160).optional(),
+  number: z.string().trim().min(1).max(80).optional(),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  active: z.boolean().optional(),
+});
+
 const manifestSignOffSchema = z.object({
   officerName: z.string().min(1),
   badgeNumber: z.string().min(1),
@@ -311,4 +340,8 @@ module.exports = {
   watchlistCreateSchema,
   watchlistUpdateSchema,
   manifestSignOffSchema,
+  portGuidelineCreateSchema,
+  portGuidelineUpdateSchema,
+  emergencyHotlineCreateSchema,
+  emergencyHotlineUpdateSchema,
 };

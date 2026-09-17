@@ -1,4 +1,4 @@
-﻿import { MoreHorizontal, CheckCircle2, XCircle, UserX, CalendarClock, FileText, Download, Printer, Inbox, Banknote, IdCard, Mail, BadgeCheck } from "lucide-react";
+import { MoreHorizontal, CheckCircle2, XCircle, UserX, CalendarClock, FileText, Download, Printer, Inbox, Banknote, IdCard, Mail, BadgeCheck, Trash2 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { Skeleton } from "../ui/Skeleton";
@@ -51,6 +51,7 @@ export function RecordsTable({
   onRebook,
   onViewManifest,
   onMarkRefundProcessed,
+  onDeletePassenger,
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
@@ -214,6 +215,15 @@ export function RecordsTable({
                         <Banknote className="h-3.5 w-3.5" />
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                      onClick={() => onDeletePassenger(r)}
+                      title="Delete passenger data"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button

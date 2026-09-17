@@ -1329,4 +1329,20 @@ async function lookup(req, res) {
   });
 }
 
-module.exports = { create, search, rebook, lookup, resendSms, kioskProfile, kioskTime, recordKioskTrip };
+
+async function remove(req, res) {
+  const { id } = req.params;
+  const passenger = await prisma.passenger.findUnique({ where: { id } });
+  if (!passenger) return res.status(404).json({ message: "Passenger not found" });
+
+  const tripCount = await prisma.trip.count({ where: { passengerId: id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.trip.deleteMany({ where: { passengerId: id } });
+    await tx.passenger.delete({ where: { id } });
+  });
+
+  await logAudit(req, "PASSENGER_DELETED", `Permanently deleted passenger ${passenger.fullName} (${id}) and ${tripCount} trip record(s)`);
+  res.json({ deleted: true, id, tripCount });
+}
+
+module.exports = { create, search, rebook, lookup, resendSms, kioskProfile, kioskTime, recordKioskTrip, remove };

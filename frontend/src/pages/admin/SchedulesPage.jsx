@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Pencil,
@@ -23,6 +23,7 @@ import { MaintenanceModal } from "../../components/admin/MaintenanceModal";
 import { ManifestModal } from "../../components/admin/ManifestModal";
 import { apiClient } from "../../lib/apiClient";
 import { useToast } from "../../components/ui/Toast";
+import { confirmDelete, sweetError, sweetSuccess } from "../../lib/sweetAlert";
 import { routeLabel } from "../../lib/route";
 import { cn } from "../../lib/cn";
 
@@ -158,20 +159,18 @@ export default function SchedulesPage() {
   }
 
   async function handleDelete(schedule) {
-    const ok = window.confirm(
-      `Delete ${schedule.ship?.name || "this ship"} — ${schedule.departureTime}?\n\nUnused schedules are permanently deleted. Schedules with passenger records cannot be deleted and should be marked Unavailable instead.`
-    );
+    const ok = await confirmDelete({
+      title: "Delete schedule?",
+      text: `${schedule.ship?.name || "Ship"} — ${schedule.departureTime}. This permanently deletes an unused schedule. Schedules with passenger records are protected.`,
+      confirmButtonText: "Yes, delete schedule",
+    });
     if (!ok) return;
     try {
       await apiClient.delete(`/schedules/${schedule.id}`);
-      showToast({ title: "Schedule deleted", variant: "success" });
+      sweetSuccess("Schedule deleted", "The schedule was permanently removed.");
       await load();
     } catch (err) {
-      showToast({
-        title: "Schedule cannot be deleted",
-        description: err.response?.data?.message || "Mark the schedule Unavailable instead.",
-        variant: "error",
-      });
+      sweetError("Schedule cannot be deleted", err.response?.data?.message || "Remove related passenger records first.");
     }
   }
 

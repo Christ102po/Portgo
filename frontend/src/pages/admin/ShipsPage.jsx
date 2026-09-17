@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Ship as ShipIcon, Armchair, Layers3 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
@@ -8,6 +8,7 @@ import { ShipClassesDialog } from "../../components/admin/ShipClassesDialog";
 import { apiClient } from "../../lib/apiClient";
 import { useToast } from "../../components/ui/Toast";
 import { accommodationClassLabel } from "../../lib/accommodationClass";
+import { confirmDelete, sweetError, sweetSuccess } from "../../lib/sweetAlert";
 
 function SkeletonRow() {
   return (
@@ -62,9 +63,19 @@ export default function ShipsPage() {
   }
 
   async function handleDeactivate(ship) {
-    await apiClient.delete(`/ships/${ship.id}`);
-    showToast({ title: `${ship.name} deactivated`, variant: "info" });
-    await load();
+    const ok = await confirmDelete({
+      title: `Delete ${ship.name}?`,
+      text: "This permanently deletes the ship and any unused schedules linked to it. Ships with passenger records are protected until those passenger records are deleted.",
+      confirmButtonText: "Yes, delete ship",
+    });
+    if (!ok) return;
+    try {
+      await apiClient.delete(`/ships/${ship.id}`);
+      sweetSuccess("Ship deleted", `${ship.name} was permanently removed.`);
+      await load();
+    } catch (err) {
+      sweetError("Ship cannot be deleted", err.response?.data?.message || "Please remove related passenger records first.");
+    }
   }
 
   async function handleActivate(ship) {
@@ -163,7 +174,7 @@ export default function ShipsPage() {
                             <Armchair className="h-3.5 w-3.5" />
                           </Button>
                           {ship.active ? (
-                            <Button variant="outline" size="sm" onClick={() => handleDeactivate(ship)} title="Deactivate ship">
+                            <Button variant="outline" size="sm" onClick={() => handleDeactivate(ship)} title="Delete ship">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           ) : (

@@ -3,6 +3,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const validate = require("../middleware/validate");
 const { passengerCreateSchema, passengerSearchSchema, passengerRebookSchema, bookingLookupSchema, kioskTripScanSchema } = require("../schemas");
 const controller = require("../controllers/passengers.controller");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.get("/qr-profile", validate(bookingLookupSchema, "query"), asyncHandler(c
 router.get("/kiosk-time", asyncHandler(controller.kioskTime));
 router.post("/kiosk-trip", validate(kioskTripScanSchema), asyncHandler(controller.recordKioskTrip));
 router.post("/:id/resend-sms", asyncHandler(controller.resendSms));
+router.delete("/:id", requireAuth, asyncHandler(controller.remove));
 
 module.exports = router;

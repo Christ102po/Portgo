@@ -126,9 +126,24 @@ async function update(req, res) {
 
 async function remove(req, res) {
   const { id } = req.params;
-  const ship = await prisma.ship.update({ where: { id }, data: { active: false } });
-  await logAudit(req, "SHIP_DEACTIVATED", `Deactivated ship ${ship.name} (${ship.id})`);
-  res.json({ ship });
+  const ship = await prisma.ship.findUnique({ where: { id } });
+  if (!ship) return res.status(404).json({ message: "Ship not found" });
+
+  const tripCount = await prisma.trip.count({ where: { shipId: id } });
+  if (tripCount > 0) {
+    return res.status(409).json({
+      code: "SHIP_HAS_PASSENGER_RECORDS",
+      message: `This ship still has ${tripCount} passenger record${tripCount === 1 ? "" : "s"}. Delete the related passenger records first, then delete the ship.`,
+    });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.shipClass.deleteMany({ where: { shipId: id } });
+    await tx.schedule.deleteMany({ where: { shipId: id } });
+    await tx.ship.delete({ where: { id } });
+  });
+  await logAudit(req, "SHIP_DELETED", `Permanently deleted ship ${ship.name} (${ship.id}) and its unused schedules`);
+  res.json({ deleted: true, id });
 }
 
 async function listClasses(req, res) {

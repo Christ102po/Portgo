@@ -280,3 +280,16 @@ body {
     padding: 2rem;
   }
 }
+
+
+/* Final readability/responsiveness pass: preserves the existing visual design. */
+body { font-size: clamp(14px, 0.25vw + 13px, 16px); line-height: 1.5; }
+button, a, label, input, select, textarea { line-height: 1.4; }
+p, span, td, th, label, button, a { overflow-wrap: break-word; }
+@media (max-width: 640px) {
+  h1 { font-size: clamp(1.35rem, 6vw, 1.75rem) !important; line-height: 1.2 !important; }
+  h2 { line-height: 1.25 !important; }
+  .swal2-popup { width: min(92vw, 32rem) !important; padding: 1.25rem !important; }
+  .swal2-title { font-size: 1.25rem !important; line-height: 1.25 !important; }
+  .swal2-html-container { font-size: .95rem !important; line-height: 1.5 !important; }
+}

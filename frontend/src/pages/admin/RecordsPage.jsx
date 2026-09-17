@@ -12,6 +12,7 @@ import { SeaConditionControl } from "../../components/admin/SeaConditionControl"
 import { VesselCapacityStats } from "../../components/admin/VesselCapacityStats";
 import { apiClient, downloadWithAuth } from "../../lib/apiClient";
 import { useToast } from "../../components/ui/Toast";
+import { confirmDelete, sweetError, sweetSuccess } from "../../lib/sweetAlert";
 
 const PAGE_SIZE = 10;
 
@@ -123,6 +124,23 @@ export default function RecordsPage() {
     }
   }
 
+  async function handleDeletePassenger(trip) {
+    const name = trip.passenger?.fullName || "this passenger";
+    const ok = await confirmDelete({
+      title: `Delete ${name}?`,
+      text: "This permanently deletes this passenger profile and ALL trip records connected to the passenger. This cannot be undone.",
+      confirmButtonText: "Yes, delete passenger",
+    });
+    if (!ok) return;
+    try {
+      const res = await apiClient.delete(`/passengers/${trip.passengerId || trip.passenger?.id}`);
+      sweetSuccess("Passenger deleted", `${name} and ${res.data.tripCount || 0} trip record(s) were permanently removed.`);
+      reload();
+    } catch (err) {
+      sweetError("Delete failed", err.response?.data?.message || "Passenger data could not be deleted.");
+    }
+  }
+
   async function handleMarkRefundProcessed(trip) {
     try {
       await apiClient.patch(`/records/${trip.id}/refund-processed`);
@@ -166,6 +184,7 @@ export default function RecordsPage() {
         onRebook={setRebookTarget}
         onViewManifest={(trip) => setManifestScheduleId(trip.scheduleId)}
         onMarkRefundProcessed={handleMarkRefundProcessed}
+        onDeletePassenger={handleDeletePassenger}
       />
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
 

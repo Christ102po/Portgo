@@ -8,6 +8,7 @@ import { downloadBoardingPass } from "../../lib/downloadPass";
 import { apiClient } from "../../lib/apiClient";
 import { cn } from "../../lib/cn";
 import { useToast } from "../ui/Toast";
+import { saveIndividualRegistration } from "../../lib/savedRegistration";
 
 function NotificationRow({ icon: Icon, label, notification }) {
   if (!notification) return null;
@@ -36,6 +37,7 @@ export function StepSuccess() {
 
   useEffect(() => {
     if (!result || result.offline) return;
+    saveIndividualRegistration(result);
     setSmsStatus(result.notifications?.sms || null);
     if (result.notifications?.sms?.sent) {
       showToast({

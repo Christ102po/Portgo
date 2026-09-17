@@ -2,6 +2,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Anchor, QrCode, UserPlus, ShieldCheck, ChevronRight, ScanLine } from "lucide-react";
 import { ConnectivityBadge } from "../components/ConnectivityBadge";
+import { SavedRegistrationHome } from "../components/SavedRegistrationHome";
+import { getSavedRegistration } from "../lib/savedRegistration";
 
 const cards = [
   {
@@ -22,6 +24,11 @@ const cards = [
 
 export default function KioskLandingPage() {
   const navigate = useNavigate();
+  const savedRegistration = getSavedRegistration();
+
+  if (savedRegistration?.code && savedRegistration?.qrCodeDataUrl) {
+    return <SavedRegistrationHome registration={savedRegistration} />;
+  }
 
   return (
     <div className="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(52,211,153,0.24),_transparent_28%),linear-gradient(145deg,#052e24_0%,#064e3b_45%,#0b5b43_100%)] text-white">

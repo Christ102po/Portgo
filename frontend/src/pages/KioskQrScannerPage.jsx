@@ -42,7 +42,7 @@ function extractCode(raw) {
 }
 
 function routeForTransactionType(transactionType) {
-  return transactionType === "SIGN_IN" ? "SURIGAO_TO_DAPA" : transactionType === "SIGN_OUT" ? "DAPA_TO_SURIGAO" : null;
+  return transactionType === "SIGN_IN" ? "DAPA_TO_SURIGAO" : transactionType === "SIGN_OUT" ? "SURIGAO_TO_DAPA" : null;
 }
 
 function parseTimeToMinutes(value) {
@@ -429,8 +429,8 @@ export default function KioskQrScannerPage() {
                     <p className="text-sm font-black text-slate-900">1. Is this trip inbound or outbound?</p>
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {[
-                        { value: "SIGN_IN", title: "Outbound", subtitle: "Departing from Surigao", icon: ArrowUpRight },
-                        { value: "SIGN_OUT", title: "Inbound", subtitle: "Arriving in Surigao", icon: ArrowDownLeft },
+                        { value: "SIGN_IN", title: "Outbound", subtitle: "Leaving Dapa to travel to Surigao", icon: ArrowUpRight },
+                        { value: "SIGN_OUT", title: "Inbound", subtitle: "Arriving at Dapa from Surigao", icon: ArrowDownLeft },
                       ].map((option) => {
                         const Icon = option.icon;
                         const selected = transactionType === option.value;

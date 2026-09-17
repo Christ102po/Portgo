@@ -962,9 +962,9 @@ function currentManilaMinutes(date = new Date()) {
 }
 
 function routeForTransactionType(transactionType) {
-  // Historical enum names: SIGN_IN is outbound/departing from Surigao,
-  // SIGN_OUT is inbound/arriving in Surigao.
-  return transactionType === "SIGN_IN" ? "SURIGAO_TO_DAPA" : "DAPA_TO_SURIGAO";
+  // Historical enum names are retained for database compatibility. PORTGO is based in Dapa:
+  // SIGN_IN = outbound/departing Dapa to Surigao; SIGN_OUT = inbound/arriving Dapa from Surigao.
+  return transactionType === "SIGN_IN" ? "DAPA_TO_SURIGAO" : "SURIGAO_TO_DAPA";
 }
 
 function circularMinuteDistance(a, b) {

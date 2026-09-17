@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, RotateCcw, Printer, Mail, MessageSquare, CloudOff, RefreshCw } from "lucide-react";
 import { useWizard } from "../../hooks/useWizard";
 import { Button } from "../ui/Button";
@@ -6,6 +7,7 @@ import { FamilyBoardingPassCard } from "./FamilyBoardingPassCard";
 import { apiClient } from "../../lib/apiClient";
 import { cn } from "../../lib/cn";
 import { useToast } from "../ui/Toast";
+import { saveFamilyRegistration } from "../../lib/savedRegistration";
 
 function NotificationRow({ icon: Icon, label, notification }) {
   if (!notification) return null;
@@ -29,9 +31,11 @@ export function StepGroupSuccess() {
   const [isResending, setIsResending] = useState(false);
   const [smsStatus, setSmsStatus] = useState(null);
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!result || result.offline) return;
+    saveFamilyRegistration(result);
     setSmsStatus(result.notifications?.sms || null);
     if (result.notifications?.sms?.sent) {
       showToast({
@@ -44,6 +48,11 @@ export function StepGroupSuccess() {
   }, [result]);
 
   if (!result) return null;
+
+  function finishSession() {
+    dispatch({ type: "RESET" });
+    navigate("/");
+  }
 
   async function handleResendSms() {
     setIsResending(true);
@@ -149,9 +158,9 @@ export function StepGroupSuccess() {
           <Printer className="h-4 w-4" />
           Print Confirmation
         </Button>
-        <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={() => dispatch({ type: "RESET" })}>
+        <Button variant="kiosk" size="lg" className="h-auto w-full sm:w-auto px-8 py-3.5 rounded-xl" onClick={finishSession}>
           <RotateCcw className="h-4 w-4" />
-          Done / Next Group
+          Finish / Kiosk Home
         </Button>
       </div>
     </div>

@@ -10,7 +10,6 @@ import {
   XCircle,
   UserX,
   Search,
-  Sparkles,
   Printer,
 } from "lucide-react";
 import { StatCard } from "../../components/admin/StatCard";
@@ -154,8 +153,8 @@ function formatDetailDate(value) {
 }
 
 function formatTransaction(value) {
-  if (value === "SIGN_IN") return "Departing · Surigao → Dapa";
-  if (value === "SIGN_OUT") return "Arriving · Dapa → Surigao";
+  if (value === "SIGN_IN") return "Departing · Dapa → Surigao";
+  if (value === "SIGN_OUT") return "Arriving · Surigao → Dapa";
   return "—";
 }
 
@@ -307,7 +306,6 @@ function getGreeting() {
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [isPrintingReport, setIsPrintingReport] = useState(false);
   const [detail, setDetail] = useState({
     open: false,
@@ -323,7 +321,6 @@ export default function DashboardPage() {
   });
   const { admin } = useAuth();
   const { showToast } = useToast();
-  const canSeed = admin?.role === "SUPER_ADMIN" || admin?.role === "ADMIN";
 
   async function openDetail(type, title, description) {
     setDetail({
@@ -391,26 +388,6 @@ export default function DashboardPage() {
     loadStats();
   }, []);
 
-  async function handleSeedDemo() {
-    setIsSeeding(true);
-    try {
-      const res = await apiClient.post("/dev/seed-demo", { count: 100 });
-      showToast({
-        title: "Sample data seeded",
-        description: `Added ${res.data.created} demo passenger logs spanning past weeks/months.`,
-        variant: "success",
-      });
-      await loadStats();
-    } catch (err) {
-      showToast({
-        title: "Seeding failed",
-        description: err.response?.data?.message,
-        variant: "error",
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  }
 
   const touristTotal = stats ? stats.touristCount : 0;
   const touristVerifiedPct = touristTotal ? Math.round((stats.touristVerifiedCount / touristTotal) * 100) : 0;
@@ -439,12 +416,6 @@ export default function DashboardPage() {
             <Printer className="h-4 w-4" />
             {isPrintingReport ? "Generating..." : "Print Executive Report"}
           </Button>
-          {canSeed && (
-            <Button variant="outline" onClick={handleSeedDemo} disabled={isSeeding} title="Populate realistic sample logs for demo purposes">
-              <Sparkles className="h-4 w-4" />
-              {isSeeding ? "Seeding..." : "Seed Sample Passenger Logs"}
-            </Button>
-          )}
         </div>
       </header>
 
@@ -467,20 +438,20 @@ export default function DashboardPage() {
               onClick={() => openDetail("totalToday", "Total Passengers Today", "All passenger trip records created today.")}
             />
             <StatCard
-              label="Today's Total Sign-In"
+              label="Today's Total Outbound"
               value={stats.signInToday}
               icon={ArrowRightCircle}
-              sublabel="Surigao → Dapa"
+              sublabel="Dapa → Surigao"
               accentColor="teal"
-              onClick={() => openDetail("signInToday", "Today's Total Sign-In", "Passengers departing from Surigao to Dapa today.")}
+              onClick={() => openDetail("signInToday", "Today's Total Outbound", "Passengers departing from Dapa to Surigao today.")}
             />
             <StatCard
-              label="Today's Total Sign-Out"
+              label="Today's Total Inbound"
               value={stats.signOutToday}
               icon={ArrowLeftCircle}
-              sublabel="Dapa → Surigao"
+              sublabel="Surigao → Dapa"
               accentColor="blue"
-              onClick={() => openDetail("signOutToday", "Today's Total Sign-Out", "Passengers arriving from Dapa to Surigao today.")}
+              onClick={() => openDetail("signOutToday", "Today's Total Inbound", "Passengers arriving at Dapa from Surigao today.")}
             />
             <StatCard
               label="Locals vs Tourists Verified"

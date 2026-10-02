@@ -81,8 +81,8 @@ async function getStats(req, res) {
     prisma.trip.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.trip.count({ where: { createdAt: { gte: todayStart }, transactionType: "SIGN_IN" } }),
     prisma.trip.count({ where: { createdAt: { gte: todayStart }, transactionType: "SIGN_OUT" } }),
-    prisma.passenger.count({ where: { createdAt: { gte: todayStart }, passengerType: { not: "FOREIGN_TOURIST" } } }),
-    prisma.passenger.count({ where: { createdAt: { gte: todayStart }, passengerType: "FOREIGN_TOURIST" } }),
+    prisma.passenger.count({ where: { createdAt: { gte: todayStart }, passengerType: "LOCAL_RESIDENT" } }),
+    prisma.passenger.count({ where: { createdAt: { gte: todayStart }, passengerType: { in: ["LOCAL_TOURIST", "FOREIGN_TOURIST"] } } }),
     prisma.passenger.count({
       where: { createdAt: { gte: todayStart }, passengerType: "FOREIGN_TOURIST", isPassportVerified: true, isFaceVerified: true },
     }),
@@ -90,8 +90,8 @@ async function getStats(req, res) {
     prisma.trip.count({ where: { createdAt: { gte: todayStart }, status: "CANCELLED" } }),
     prisma.trip.count({ where: { createdAt: { gte: todayStart }, status: "NO_SHOW" } }),
     prisma.trip.count({ where: { createdAt: { gte: yesterdayStart, lt: todayStart } } }),
-    prisma.passenger.count({ where: { createdAt: { gte: last30DaysStart }, passengerType: { not: "FOREIGN_TOURIST" } } }),
-    prisma.passenger.count({ where: { createdAt: { gte: last30DaysStart }, passengerType: "FOREIGN_TOURIST" } }),
+    prisma.passenger.count({ where: { createdAt: { gte: last30DaysStart }, passengerType: "LOCAL_RESIDENT" } }),
+    prisma.passenger.count({ where: { createdAt: { gte: last30DaysStart }, passengerType: { in: ["LOCAL_TOURIST", "FOREIGN_TOURIST"] } } }),
     prisma.trip.findMany({ where: { createdAt: { gte: last7DaysStart } }, select: { createdAt: true } }),
   ]);
 

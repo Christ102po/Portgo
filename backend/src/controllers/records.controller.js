@@ -94,8 +94,8 @@ async function list(req, res) {
       take: pageSize,
     }),
     prisma.trip.count({ where }),
-    prisma.trip.count({ where: { ...where, passenger: { ...where.passenger, passengerType: { not: "FOREIGN_TOURIST" } } } }),
-    prisma.trip.count({ where: { ...where, passenger: { ...where.passenger, passengerType: "FOREIGN_TOURIST" } } }),
+    prisma.trip.count({ where: { ...where, passenger: { ...where.passenger, passengerType: "LOCAL_RESIDENT" } } }),
+    prisma.trip.count({ where: { ...where, passenger: { ...where.passenger, passengerType: { in: ["LOCAL_TOURIST", "FOREIGN_TOURIST"] } } } }),
     // Departed = Outbound (Sign In, traveling to Dapa/Siargao, leaving Surigao).
     prisma.trip.count({ where: { ...where, transactionType: "SIGN_IN" } }),
     // Arrived = Inbound (Sign Out, traveling to Surigao, arriving from Dapa/Siargao).
@@ -131,45 +131,17 @@ async function exportCsv(req, res) {
   });
 
   const columns = [
-    { label: "Pass Number", value: (r) => r.passNumber },
+    { label: "Pass Number", value: (r) => r.passNumber || "" },
     { label: "Full Name", value: (r) => r.passenger.fullName },
     { label: "Age", value: (r) => (r.passenger.age != null ? r.passenger.age : "") },
-    { label: "Contact Number", value: (r) => r.passenger.contactNumber },
-    { label: "Email", value: (r) => r.passenger.email || "" },
-    { label: "Email Verified", value: (r) => (r.passenger.email ? (r.passenger.isEmailVerified ? "Yes" : "No") : "") },
-    { label: "Emergency Contact Name", value: (r) => r.passenger.emergencyContactName || "" },
-    { label: "Emergency Contact Number", value: (r) => r.passenger.emergencyContactPhone || "" },
-    { label: "Passenger Type", value: (r) => r.passenger.passengerType },
-    { label: "Passport Number", value: (r) => r.passenger.passportNumber || "" },
-    { label: "ID Number", value: (r) => r.passenger.idNumber || "" },
-    { label: "Gender", value: (r) => r.passenger.gender },
-    { label: "Address", value: (r) => r.passenger.address },
-    { label: "Direction", value: (r) => (r.transactionType === "SIGN_IN" ? "Outbound (Departing)" : "Inbound (Arriving)") },
-    { label: "Accommodation Class", value: (r) => r.accommodationClass || "" },
+    { label: "Gender", value: (r) => r.passenger.gender || "" },
+    { label: "Address", value: (r) => r.passenger.address || "" },
     {
-      label: "Verification Status",
-      value: (r) =>
-        r.passenger.passengerType === "FOREIGN_TOURIST"
-          ? r.passenger.isPassportVerified && r.passenger.isFaceVerified
-            ? "Passport & Face Verified"
-            : "Unverified"
-          : r.passenger.isPhoneVerified && r.passenger.isDocumentVerified
-          ? "Phone & ID Verified"
-          : r.passenger.isPhoneVerified
-          ? "Phone Verified"
-          : "Unverified",
+      label: "Passenger Category",
+      value: (r) => (["LOCAL_TOURIST", "FOREIGN_TOURIST"].includes(r.passenger.passengerType) ? "Tourist" : "Local Passenger"),
     },
-    { label: "ID Document Uploaded", value: (r) => (r.passenger.verificationDocumentUrl ? "Yes" : "No") },
-    { label: "Transaction Type", value: (r) => r.transactionType },
-    { label: "Purpose", value: (r) => r.purpose },
-    { label: "Status", value: (r) => r.status },
-    { label: "Ship", value: (r) => r.ship.name },
-    { label: "Route", value: (r) => r.schedule.route },
-    { label: "Departure Time", value: (r) => r.schedule.departureTime },
-    { label: "Has Vehicle", value: (r) => (r.hasVehicle ? "Yes" : "No") },
-    { label: "Vehicle Type", value: (r) => r.vehicleType || "" },
-    { label: "Plate Number", value: (r) => r.plateNumber || "" },
-    { label: "Created At", value: (r) => r.createdAt.toISOString() },
+    { label: "Ship Boarded", value: (r) => r.ship?.name || "" },
+    { label: "Registered At", value: (r) => r.createdAt.toISOString() },
   ];
 
   const csv = toCsv(rows, columns);

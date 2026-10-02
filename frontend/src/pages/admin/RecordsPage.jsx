@@ -1,78 +1,54 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Users, MapPin, Plane } from "lucide-react";
+import { MapPin, Plane } from "lucide-react";
 import { RecordsFilters, EMPTY_RECORDS_FILTERS } from "../../components/admin/RecordsFilters";
 import { RecordsTable } from "../../components/admin/RecordsTable";
 import { Pagination } from "../../components/admin/Pagination";
-import { CancelBookingModal } from "../../components/admin/CancelBookingModal";
-import { RebookModal } from "../../components/admin/RebookModal";
-import { ManifestModal } from "../../components/admin/ManifestModal";
 import { StatCard } from "../../components/admin/StatCard";
-import { SeaConditionControl } from "../../components/admin/SeaConditionControl";
-import { VesselCapacityStats } from "../../components/admin/VesselCapacityStats";
 import { apiClient, downloadWithAuth } from "../../lib/apiClient";
 import { useToast } from "../../components/ui/Toast";
 import { confirmDelete, sweetError, sweetSuccess } from "../../lib/sweetAlert";
 
 const PAGE_SIZE = 10;
 
-export default function RecordsPage({ recordCategory = "ALL" }) {
+export default function RecordsPage({ recordCategory }) {
   const location = useLocation();
   const [ships, setShips] = useState([]);
-  const [filters, setFilters] = useState(() => ({
-    ...EMPTY_RECORDS_FILTERS,
-    search: location.state?.presetSearch || "",
-  }));
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_RECORDS_FILTERS, search: location.state?.presetSearch || "" }));
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [rebookTarget, setRebookTarget] = useState(null);
-  const [manifestScheduleId, setManifestScheduleId] = useState(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    apiClient.get("/ships?all=1").then((res) => setShips(res.data.ships));
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [filters]);
+  useEffect(() => { apiClient.get("/ships?all=1").then((res) => setShips(res.data.ships || [])); }, []);
+  useEffect(() => { setPage(1); }, [filters, recordCategory]);
 
   function reload() {
     setIsLoading(true);
-    const params = { ...filters, page, pageSize: PAGE_SIZE, ...(recordCategory !== "ALL" ? { recordCategory } : {}) };
-    Object.keys(params).forEach((k) => !params[k] && delete params[k]);
-    return apiClient
-      .get("/records", { params })
-      .then((res) => {
-        setRows(res.data.rows);
-        setTotal(res.data.total);
-        setSummary(res.data.summary);
-      })
-      .finally(() => setIsLoading(false));
+    const params = { ...filters, page, pageSize: PAGE_SIZE, recordCategory };
+    Object.keys(params).forEach((key) => !params[key] && delete params[key]);
+    return apiClient.get("/records", { params }).then((res) => {
+      setRows(res.data.rows || []);
+      setTotal(res.data.total || 0);
+    }).finally(() => setIsLoading(false));
   }
 
   useEffect(() => {
-    setIsLoading(true);
-    const timeout = setTimeout(reload, 300);
+    const timeout = setTimeout(reload, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, page]);
+  }, [filters, page, recordCategory]);
 
   async function handleExport() {
     setIsExporting(true);
     try {
-      const params = { ...filters, ...(recordCategory !== "ALL" ? { recordCategory } : {}) };
-      Object.keys(params).forEach((k) => !params[k] && delete params[k]);
+      const params = { ...filters, recordCategory };
+      Object.keys(params).forEach((key) => !params[key] && delete params[key]);
       const query = new URLSearchParams(params).toString();
-      await downloadWithAuth(
-        `/records/export${query ? `?${query}` : ""}`,
-        `portgo-records-${new Date().toISOString().slice(0, 10)}.csv`
-      );
+      const prefix = recordCategory === "TOURIST" ? "tourist" : "local-passenger";
+      await downloadWithAuth(`/records/export?${query}`, `portgo-${prefix}-records-${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (err) {
       showToast({ title: "Export failed", variant: "error" });
     } finally {
@@ -80,150 +56,43 @@ export default function RecordsPage({ recordCategory = "ALL" }) {
     }
   }
 
-  async function handleBoard(trip) {
-    try {
-      await apiClient.patch(`/records/${trip.id}/status`, { status: "BOARDED" });
-      showToast({ title: `${trip.passenger.fullName} marked as boarded`, variant: "success" });
-      reload();
-    } catch (err) {
-      showToast({ title: "Failed to update status", description: err.response?.data?.message, variant: "error" });
-    }
-  }
-
-  async function handleNoShow(trip) {
-    try {
-      await apiClient.patch(`/records/${trip.id}/status`, { status: "NO_SHOW" });
-      showToast({ title: `${trip.passenger.fullName} marked as no-show`, variant: "info" });
-      reload();
-    } catch (err) {
-      showToast({ title: "Failed to update status", description: err.response?.data?.message, variant: "error" });
-    }
-  }
-
-  async function handleCancelConfirm(reason) {
-    try {
-      await apiClient.patch(`/records/${cancelTarget.id}/status`, { status: "CANCELLED", reason });
-      showToast({ title: "Booking cancelled", variant: "success" });
-      reload();
-    } catch (err) {
-      showToast({ title: "Failed to cancel booking", description: err.response?.data?.message, variant: "error" });
-    }
-  }
-
-  async function handleRebookConfirm(scheduleId) {
-    try {
-      const res = await apiClient.post(`/records/${rebookTarget.id}/rebook`, { scheduleId });
-      showToast({
-        title: "Passenger rebooked",
-        description: `New pass number ${res.data.trip.passNumber}`,
-        variant: "success",
-      });
-      reload();
-    } catch (err) {
-      showToast({ title: "Failed to rebook", description: err.response?.data?.message, variant: "error" });
-    }
-  }
-
   async function handleDeletePassenger(trip) {
     const name = trip.passenger?.fullName || "this passenger";
     const ok = await confirmDelete({
       title: `Delete ${name}?`,
-      text: "This permanently deletes this passenger profile and ALL trip records connected to the passenger. This cannot be undone.",
-      confirmButtonText: "Yes, delete passenger",
+      text: "This permanently deletes this passenger registration and its connected trip record.",
+      confirmButtonText: "Yes, delete",
     });
     if (!ok) return;
     try {
-      const res = await apiClient.delete(`/passengers/${trip.passengerId || trip.passenger?.id}`);
-      sweetSuccess("Passenger deleted", `${name} and ${res.data.tripCount || 0} trip record(s) were permanently removed.`);
+      await apiClient.delete(`/passengers/${trip.passengerId || trip.passenger?.id}`);
+      sweetSuccess("Passenger deleted", `${name}'s record was permanently removed.`);
       reload();
     } catch (err) {
       sweetError("Delete failed", err.response?.data?.message || "Passenger data could not be deleted.");
     }
   }
 
-  async function handleMarkRefundProcessed(trip) {
-    try {
-      await apiClient.patch(`/records/${trip.id}/refund-processed`);
-      showToast({ title: `Refund marked processed for ${trip.passenger.fullName}`, variant: "success" });
-      reload();
-    } catch (err) {
-      showToast({ title: "Failed to mark refund processed", description: err.response?.data?.message, variant: "error" });
-    }
-  }
-
-  const pageTitle = recordCategory === "TOURIST"
-    ? "Tourist Passenger Records"
-    : recordCategory === "LOCAL"
-      ? "Local Passenger Records"
-      : "Passenger Manifest & Records";
-  const pageDescription = recordCategory === "TOURIST"
+  const tourist = recordCategory === "TOURIST";
+  const title = tourist ? "Tourist Records" : "Local Passenger Records";
+  const description = tourist
     ? "Tourist registrations submitted through the Tourist Fill-Up Form."
-    : recordCategory === "LOCAL"
-      ? "Local passenger registrations submitted through the Local Passenger Fill-Up Form."
-      : "Search, filter, and export passenger trip logs for Port Authority / PCG clearance.";
+    : "Local passenger registrations submitted through the Local Passenger Fill-Up Form.";
 
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-graphite">{pageTitle}</h1>
-        <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
+        <h1 className="text-2xl font-bold text-graphite">{title}</h1>
+        <p className="mt-1 text-sm text-slate-500">{description}</p>
       </header>
 
-      <SeaConditionControl />
-      <VesselCapacityStats onViewManifest={setManifestScheduleId} />
-
-      {summary && (
-        recordCategory === "TOURIST" ? (
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:max-w-sm">
-            <StatCard label="Total Tourist Records" value={summary.total} icon={Plane} accentColor="violet" />
-          </div>
-        ) : recordCategory === "LOCAL" ? (
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:max-w-sm">
-            <StatCard label="Total Local Passenger Records" value={summary.total} icon={MapPin} accentColor="green" />
-          </div>
-        ) : (
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Total Matching Records" value={summary.total} icon={Users} accent />
-            <StatCard label="Local Passengers" value={summary.local} icon={MapPin} accentColor="green" />
-            <StatCard label="Tourist Passengers" value={summary.tourist} icon={Plane} accentColor="violet" />
-          </div>
-        )
-      )}
+      <div className="mb-5 max-w-sm">
+        <StatCard label={tourist ? "Total Tourist Records" : "Total Local Passenger Records"} value={total} icon={tourist ? Plane : MapPin} accentColor={tourist ? "violet" : "green"} />
+      </div>
 
       <RecordsFilters filters={filters} onChange={setFilters} ships={ships} />
-      <RecordsTable
-        rows={rows}
-        total={total}
-        isLoading={isLoading}
-        onExport={handleExport}
-        isExporting={isExporting}
-        onBoard={handleBoard}
-        onNoShow={handleNoShow}
-        onCancel={setCancelTarget}
-        onRebook={setRebookTarget}
-        onViewManifest={(trip) => setManifestScheduleId(trip.scheduleId)}
-        onMarkRefundProcessed={handleMarkRefundProcessed}
-        onDeletePassenger={handleDeletePassenger}
-      />
+      <RecordsTable rows={rows} total={total} isLoading={isLoading} onExport={handleExport} isExporting={isExporting} onDeletePassenger={handleDeletePassenger} />
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
-
-      <CancelBookingModal
-        open={!!cancelTarget}
-        onOpenChange={(open) => !open && setCancelTarget(null)}
-        trip={cancelTarget}
-        onConfirm={handleCancelConfirm}
-      />
-      <RebookModal
-        open={!!rebookTarget}
-        onOpenChange={(open) => !open && setRebookTarget(null)}
-        trip={rebookTarget}
-        onConfirm={handleRebookConfirm}
-      />
-      <ManifestModal
-        open={!!manifestScheduleId}
-        onOpenChange={(open) => !open && setManifestScheduleId(null)}
-        scheduleId={manifestScheduleId}
-      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
-import KioskLandingPage from "./pages/KioskLandingPage";
-import KioskPage from "./pages/KioskPage";
+import TouristFillUpForm from "./pages/TouristFillUpForm";
+import LocalFillUpForm from "./pages/LocalFillUpForm";
 import KioskQrScannerPage from "./pages/KioskQrScannerPage";
 import LoginPage from "./pages/admin/LoginPage";
 import DashboardPage from "./pages/admin/DashboardPage";
@@ -25,8 +25,9 @@ import { RequireRole } from "./routes/RequireRole";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<KioskLandingPage />} />
-      <Route path="/register" element={<KioskPage />} />
+      <Route path="/" element={<KioskQrScannerPage />} />
+      <Route path="/touristfillupform" element={<TouristFillUpForm />} />
+      <Route path="/localfillupform" element={<LocalFillUpForm />} />
       <Route path="/scan-pass" element={<KioskQrScannerPage />} />
       <Route path="/display" element={<DisplayBoardPage />} />
       <Route path="/admin/login" element={<LoginPage />} />
@@ -43,6 +44,8 @@ export default function App() {
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="records" element={<RecordsPage />} />
+        <Route path="tourist-records" element={<RecordsPage recordCategory="TOURIST" />} />
+        <Route path="local-passenger-records" element={<RecordsPage recordCategory="LOCAL" />} />
         <Route path="manifest" element={<ManifestDashboardPage />} />
         <Route path="ticketing" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "TICKETING_OFFICER"]}><TicketingDeskPage /></RequireRole>} />
         <Route path="gate-scanner" element={<RequireRole roles={["SUPER_ADMIN", "ADMIN", "GATE_SCANNER"]}><GateScannerPage /></RequireRole>} />

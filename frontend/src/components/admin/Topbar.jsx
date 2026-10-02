@@ -11,6 +11,8 @@ import { isForcedOffline, setForcedOffline, subscribeForcedOffline } from "../..
 const TITLES = {
   "/admin": "Dashboard",
   "/admin/records": "Passenger Records",
+  "/admin/tourist-records": "Tourist Records",
+  "/admin/local-passenger-records": "Local Passenger Records",
   "/admin/manifest": "Manifest Inspection",
   "/admin/ticketing": "Ticketing Desk",
   "/admin/gate-scanner": "Gate Scanner",

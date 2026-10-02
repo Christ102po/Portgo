@@ -88,6 +88,16 @@ const passengerCreateSchema = z.object({
   }
 });
 
+
+const simplePassengerCreateSchema = z.object({
+  fullName: z.string().trim().min(1).max(160),
+  age: z.coerce.number().int().min(0).max(130),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
+  address: z.string().trim().min(1).max(500),
+  shipId: z.string().min(1),
+  registrationType: z.enum(["TOURIST", "LOCAL_PASSENGER"]),
+});
+
 const familyBookingCreateSchema = z.object({
   headContact: z.string().min(7).optional().nullable().or(z.literal("")),
   headEmail: z.string().email().optional().nullable().or(z.literal("")),
@@ -321,6 +331,7 @@ module.exports = {
   otpSendSchema,
   otpVerifySchema,
   passengerCreateSchema,
+  simplePassengerCreateSchema,
   passengerSearchSchema,
   passengerRebookSchema,
   familyBookingCreateSchema,

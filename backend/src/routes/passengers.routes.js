@@ -1,13 +1,14 @@
 const express = require("express");
 const asyncHandler = require("../utils/asyncHandler");
 const validate = require("../middleware/validate");
-const { passengerCreateSchema, passengerSearchSchema, passengerRebookSchema, bookingLookupSchema, kioskTripScanSchema } = require("../schemas");
+const { passengerCreateSchema, simplePassengerCreateSchema, passengerSearchSchema, passengerRebookSchema, bookingLookupSchema, kioskTripScanSchema } = require("../schemas");
 const controller = require("../controllers/passengers.controller");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
 router.post("/", validate(passengerCreateSchema), asyncHandler(controller.create));
+router.post("/simple", validate(simplePassengerCreateSchema), asyncHandler(controller.createSimple));
 router.get("/search", validate(passengerSearchSchema, "query"), asyncHandler(controller.search));
 router.post("/:id/rebook", validate(passengerRebookSchema), asyncHandler(controller.rebook));
 router.get("/lookup", validate(bookingLookupSchema, "query"), asyncHandler(controller.lookup));

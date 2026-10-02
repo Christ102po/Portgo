@@ -22,6 +22,7 @@ function buildWhere(query) {
     shipId,
     scheduleId,
     passengerType,
+    recordCategory,
     transactionType,
     accommodationClass,
     status,
@@ -51,7 +52,13 @@ function buildWhere(query) {
     where.createdAt = { gte: start, lt: end };
   }
 
-  if (passengerType) passengerWhere.passengerType = passengerType;
+  if (recordCategory === "LOCAL") {
+    passengerWhere.passengerType = "LOCAL_RESIDENT";
+  } else if (recordCategory === "TOURIST") {
+    passengerWhere.passengerType = { in: ["LOCAL_TOURIST", "FOREIGN_TOURIST"] };
+  } else if (passengerType) {
+    passengerWhere.passengerType = passengerType;
+  }
 
   if (priority === "MINOR") {
     passengerWhere.age = { lt: 18 };

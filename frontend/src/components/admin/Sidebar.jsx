@@ -31,7 +31,8 @@ const NAV_GROUPS = [
     icon: LayoutDashboard,
     items: [
       { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true, roles: ALL_STAFF },
-      { to: "/admin/records", label: "Passenger Records", icon: ClipboardList, roles: ALL_STAFF },
+      { to: "/admin/tourist-records", label: "Tourist Records", icon: ClipboardList, roles: ALL_STAFF },
+      { to: "/admin/local-passenger-records", label: "Local Passenger Records", icon: ClipboardList, roles: ALL_STAFF },
       { to: "/admin/manifest", label: "Manifest Inspection", icon: ClipboardCheck, roles: ALL_STAFF },
       { to: "/admin/ticketing", label: "Ticketing Desk", icon: Ticket, roles: [...ALL_STAFF, "TICKETING_OFFICER"] },
       { to: "/admin/gate-scanner", label: "Gate Scanner", icon: ScanLine, roles: [...ALL_STAFF, "GATE_SCANNER"] },

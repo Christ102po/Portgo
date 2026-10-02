@@ -16,7 +16,7 @@ import { confirmDelete, sweetError, sweetSuccess } from "../../lib/sweetAlert";
 
 const PAGE_SIZE = 10;
 
-export default function RecordsPage() {
+export default function RecordsPage({ recordCategory = "ALL" }) {
   const location = useLocation();
   const [ships, setShips] = useState([]);
   const [filters, setFilters] = useState(() => ({
@@ -44,7 +44,7 @@ export default function RecordsPage() {
 
   function reload() {
     setIsLoading(true);
-    const params = { ...filters, page, pageSize: PAGE_SIZE };
+    const params = { ...filters, page, pageSize: PAGE_SIZE, ...(recordCategory !== "ALL" ? { recordCategory } : {}) };
     Object.keys(params).forEach((k) => !params[k] && delete params[k]);
     return apiClient
       .get("/records", { params })
@@ -66,7 +66,7 @@ export default function RecordsPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      const params = { ...filters };
+      const params = { ...filters, ...(recordCategory !== "ALL" ? { recordCategory } : {}) };
       Object.keys(params).forEach((k) => !params[k] && delete params[k]);
       const query = new URLSearchParams(params).toString();
       await downloadWithAuth(
@@ -151,24 +151,43 @@ export default function RecordsPage() {
     }
   }
 
+  const pageTitle = recordCategory === "TOURIST"
+    ? "Tourist Passenger Records"
+    : recordCategory === "LOCAL"
+      ? "Local Passenger Records"
+      : "Passenger Manifest & Records";
+  const pageDescription = recordCategory === "TOURIST"
+    ? "Tourist registrations submitted through the Tourist Fill-Up Form."
+    : recordCategory === "LOCAL"
+      ? "Local passenger registrations submitted through the Local Passenger Fill-Up Form."
+      : "Search, filter, and export passenger trip logs for Port Authority / PCG clearance.";
+
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-graphite">Passenger Manifest &amp; Records</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Search, filter, and export passenger trip logs for Port Authority / PCG clearance.
-        </p>
+        <h1 className="text-2xl font-bold text-graphite">{pageTitle}</h1>
+        <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
       </header>
 
       <SeaConditionControl />
       <VesselCapacityStats onViewManifest={setManifestScheduleId} />
 
       {summary && (
-        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Total Matching Records" value={summary.total} icon={Users} accent />
-          <StatCard label="Local Passengers" value={summary.local} icon={MapPin} accentColor="green" />
-          <StatCard label="Tourist Passengers" value={summary.tourist} icon={Plane} accentColor="violet" />
-        </div>
+        recordCategory === "TOURIST" ? (
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:max-w-sm">
+            <StatCard label="Total Tourist Records" value={summary.total} icon={Plane} accentColor="violet" />
+          </div>
+        ) : recordCategory === "LOCAL" ? (
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:max-w-sm">
+            <StatCard label="Total Local Passenger Records" value={summary.total} icon={MapPin} accentColor="green" />
+          </div>
+        ) : (
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Total Matching Records" value={summary.total} icon={Users} accent />
+            <StatCard label="Local Passengers" value={summary.local} icon={MapPin} accentColor="green" />
+            <StatCard label="Tourist Passengers" value={summary.tourist} icon={Plane} accentColor="violet" />
+          </div>
+        )
       )}
 
       <RecordsFilters filters={filters} onChange={setFilters} ships={ships} />

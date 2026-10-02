@@ -1345,4 +1345,117 @@ async function remove(req, res) {
   res.json({ deleted: true, id, tripCount });
 }
 
-module.exports = { create, search, rebook, lookup, resendSms, kioskProfile, kioskTime, recordKioskTrip, remove };
+
+async function createSimple(req, res) {
+  const data = req.body;
+
+  const advisory = await getAdvisorySingleton();
+  if (advisory.suspended) {
+    return res.status(423).json({
+      message:
+        advisory.suspendedReason ||
+        "Port operations are currently suspended. New passenger registration is temporarily disabled.",
+    });
+  }
+
+  const ship = await prisma.ship.findUnique({ where: { id: data.shipId } });
+  if (!ship || !ship.active) {
+    return res.status(400).json({ message: "Selected ship is not currently available." });
+  }
+
+  const schedule = await prisma.schedule.findFirst({
+    where: {
+      shipId: data.shipId,
+      active: true,
+      status: { in: BOOKABLE_SCHEDULE_STATUSES },
+    },
+    orderBy: [{ createdAt: "desc" }],
+  });
+
+  if (!schedule) {
+    return res.status(409).json({
+      message: "This ship has no active schedule. Please ask port staff to activate a schedule before registering.",
+    });
+  }
+
+  const bookedCount = await getBookedCount(schedule.id);
+  if (bookedCount >= ship.capacity) {
+    return res.status(409).json({ message: "The selected ship has reached its passenger capacity for the active schedule." });
+  }
+
+  const passengerType = data.registrationType === "TOURIST" ? "LOCAL_TOURIST" : "LOCAL_RESIDENT";
+  const transactionType = schedule.route === "DAPA_TO_SURIGAO" ? "SIGN_IN" : "SIGN_OUT";
+  const purpose = data.registrationType === "TOURIST" ? "TOURISM" : "RESIDENT_RETURN";
+
+  let result = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < MAX_PASS_NUMBER_ATTEMPTS; attempt++) {
+    const passNumber = generatePassNumber();
+    const qrCodeData = await generateQrDataUrl({
+      type: "PASSENGER",
+      passNumber,
+      passengerName: data.fullName,
+      passengerType,
+      ship: ship.name,
+      schedule: schedule.departureTime,
+      route: schedule.route,
+      issuedAt: new Date().toISOString(),
+    });
+
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const currentBooked = await tx.trip.count({
+          where: { scheduleId: schedule.id, status: { in: ACTIVE_TRIP_STATUSES } },
+        });
+        if (currentBooked >= ship.capacity) {
+          const err = new Error("The selected ship has reached its passenger capacity for the active schedule.");
+          err.status = 409;
+          throw err;
+        }
+
+        const passenger = await tx.passenger.create({
+          data: {
+            fullName: data.fullName.trim(),
+            age: data.age,
+            gender: data.gender,
+            address: data.address.trim(),
+            passengerType,
+          },
+        });
+
+        const trip = await tx.trip.create({
+          data: {
+            passNumber,
+            qrCodeData,
+            transactionType,
+            purpose,
+            status: "ACTIVE",
+            passengerId: passenger.id,
+            shipId: ship.id,
+            scheduleId: schedule.id,
+          },
+          include: { passenger: true, ship: true, schedule: true },
+        });
+
+        return { passenger, trip };
+      });
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      if (err?.code !== "P2002") break;
+    }
+  }
+
+  if (!result) throw lastError || new Error("Unable to create passenger registration.");
+
+  res.status(201).json({
+    success: true,
+    passenger: result.passenger,
+    trip: result.trip,
+    passNumber: result.trip.passNumber,
+    qrCodeDataUrl: result.trip.qrCodeData,
+  });
+}
+
+module.exports = { create, createSimple, search, rebook, lookup, resendSms, kioskProfile, kioskTime, recordKioskTrip, remove };
